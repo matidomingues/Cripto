@@ -44,24 +44,20 @@ unsigned char *LoadBitmapFile(char *filename, BITMAPINFOHEADER *bitmapInfoHeader
 	    if (filePtr == NULL)
 	        return NULL;
 	//read the bitmap file header
-	printf("%d\n", sizeof(BITMAPFILEHEADER));
-//	fread(&test2, 2,1,filePtr);
-//	printf("%d\n", test2);
-
 	fread(&bitmapFileHeader, sizeof(BITMAPFILEHEADER), 1,filePtr);
 
 	//verify that this is a bmp file by check bitmap id
-//	if (bitmapFileHeader.bfType !=0x4D42)
-//	{
-//		fclose(filePtr);
-//		return NULL;
-//	}
+	if (bitmapFileHeader.bfType !=0x4D42)
+	{
+		fclose(filePtr);
+		return NULL;
+	}
 
 	//read the bitmap info header
 	fread(bitmapInfoHeader, sizeof(BITMAPINFOHEADER),1,filePtr);
 
 	//move file point to the begging of bitmap data
-	fseek(filePtr, bitmapFileHeader.bOffBits, SEEK_SET);
+	fseek(filePtr, bitmapFileHeader.bOffBits , SEEK_SET);
 
 	//allocate enough memory for the bitmap image data
 	bitmapImage = (unsigned char*)malloc(bitmapInfoHeader->biSizeImage);
@@ -84,15 +80,7 @@ unsigned char *LoadBitmapFile(char *filename, BITMAPINFOHEADER *bitmapInfoHeader
 		return NULL;
 	}
 
-	//swap the r and b values to get RGB (bitmap is BGR)
-	for (imageIdx = 0;imageIdx < bitmapInfoHeader->biSizeImage;imageIdx+=3)
-	{
-		tempRGB = bitmapImage[imageIdx];
-		bitmapImage[imageIdx] = bitmapImage[imageIdx + 2];
-		bitmapImage[imageIdx + 2] = tempRGB;
-	}
-
-	//close file and return bitmap iamge data
+	//close file and return bitmap image data
 	fclose(filePtr);
 	return bitmapImage;
 
@@ -102,7 +90,14 @@ int main(void){
 	BITMAPINFOHEADER bitmapInfoHeader;
 	unsigned char *bitmapData;
 	bitmapData = LoadBitmapFile("20x20.bmp",&bitmapInfoHeader);
-	printf("test");
+	int i = 0, w = 0;
+	for(i=0; i<bitmapInfoHeader.biHeight; i++){
+		for(w=0; w<bitmapInfoHeader.biWidth ; w++){
+			printf("%2x ",*bitmapData);
+			bitmapData++;
+		}
+		printf("\n");
+	}
 }
 
 
