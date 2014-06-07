@@ -96,11 +96,7 @@ unsigned char* calculateBits(unsigned char *bitmapData, int k){
 	int num;
 	l[0] = 8;
 	for(i = 1; i < k; i++){
-		printf("%d - %d - %f\n",l[i-1], k-(i-1), ceil(8/(float)3));
 		l[i] = l[i-1] - ceil(l[i-1]/(float)(k-(i-1)));
-	}
-	for(i=0; i<k;i++){
-		printf("%d\n",l[i]);
 	}
 	aux = arr = (unsigned char*)malloc(k);
 
@@ -114,6 +110,29 @@ unsigned char* calculateBits(unsigned char *bitmapData, int k){
 
 	}
 	return aux;
+}
+
+unsigned char* getA(unsigned char *bitmapData, int k){
+	unsigned char *arr, *aux;
+		int i, l[k];
+		int pot;
+		int num;
+		l[0] = 8;
+		for(i = 1; i < k; i++){
+			l[i] = l[i-1] - ceil(l[i-1]/(float)(k-(i-1)));
+		}
+		aux = arr = (unsigned char*)malloc(k);
+
+		for(i = 0; i < k; i++){
+			pot = (int)pow(2,ceil(l[i]/(float)(k-i)));
+			num = 256-pot;
+			*arr = (*bitmapData & num);
+			*arr /= pot;
+			bitmapData++;
+			arr++;
+
+		}
+		return aux;
 }
 
 int calculateB(unsigned char *bitmapData, unsigned char *calculatedA, int k){
@@ -130,31 +149,52 @@ int calculateB(unsigned char *bitmapData, unsigned char *calculatedA, int k){
 void printBMPMatrix(unsigned char *bitmapData, BITMAPINFOHEADER infoHeader){
 	int i,w;
 	for(i=0; i<infoHeader.biHeight; i++){
-			for(w=0; w<infoHeader.biWidth ; w++){
-				printf("%2x ",*bitmapData);
-				bitmapData++;
-			}
-			printf("\n");
+		for(w=0; w<infoHeader.biWidth ; w++){
+			printf("%2x ",*bitmapData);
+			bitmapData++;
 		}
+		printf("\n");
+	}
+}
+
+void getBitsTweaked(int b, unsigned char* bitmapData, unsigned char* alist, int k){
+	int i, l[k], pot, new, num;
+	l[0] = 8;
+	for(i = 1; i < k; i++){
+		l[i] = l[i-1] - ceil(l[i-1]/(float)(k-(i-1)));
+	}
+	for(i=2; i >= 0; i--){
+		num = ceil(l[i]/(float)(k-i));
+		*(bitmapData+i) = *(alist +i) << num;
+		new = b & (1<<num) -1;
+		*(bitmapData+i) += new;
+		b = b >> num;
+	}
 }
 
 int main(void){
 	BITMAPINFOHEADER infoHeaders[6];
-	unsigned char *bitmapData[6];
+	unsigned char *bitmapData[6], *data;
+	int i, num, w;
 	bitmapData[0] = LoadBitmapFile("20x20.bmp",&infoHeaders[0]);
 	bitmapData[1] = LoadBitmapFile("20x20-1.bmp",&infoHeaders[1]);
 	bitmapData[2] = LoadBitmapFile("20x20-2.bmp",&infoHeaders[2]);
 	bitmapData[3] = LoadBitmapFile("20x20-3.bmp",&infoHeaders[3]);
 	bitmapData[4] = LoadBitmapFile("20x20-4.bmp",&infoHeaders[4]);
 	bitmapData[5] = LoadBitmapFile("20x20-5.bmp",&infoHeaders[5]);
-	unsigned char *data = calculateBits(bitmapData[1], 3);
-	int num1 = calculateB(bitmapData[0], data, 3);
-	data = calculateBits(bitmapData[2], 3);
-	int num2 = calculateB(bitmapData[0], data, 3);
-	data = calculateBits(bitmapData[3], 3);
-	int num3 = calculateB(bitmapData[0], data, 3);
-	printf("%d %d %d\n", num1, num2, num3);
+	for(w = 0 ; w< infoHeaders[0].biSizeImage; w += 3){
+		for(i = 1; i < 2; i++){
+			data = calculateBits(bitmapData[i], 3);
+			num = calculateB(bitmapData[0], data, 3);
+			getBitsTweaked(num,bitmapData[i], data,3);
+			bitmapData[i] += 3;
+		}
+		bitmapData[0] += 3;
+	}
+
 	printBMPMatrix(bitmapData[0], infoHeaders[0]);
+	printf("\n");
+	printBMPMatrix(bitmapData[1]-402, infoHeaders[1]);
 
 }
 
