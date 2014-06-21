@@ -1,3 +1,5 @@
+#include "bitCalculations.h"
+
 unsigned char* calculateBits(unsigned char *bitmapData, int* b, int k){
 	unsigned char *arr;
 	int i, pot;
@@ -26,7 +28,7 @@ int calculateB(unsigned char *bitmapData, unsigned char *calculatedA, int k){
 
 int* calculateBArray(int k){
 	int i, l[k], *b;
-	b = malloc(k*sizeof(int));
+	b = (int *)malloc(k*sizeof(int));
 	l[0] = 8;
 	b[0] = ceil(l[0]/(float)(k));
 	for(i = 1; i < k; i++){

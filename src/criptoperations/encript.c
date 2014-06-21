@@ -4,20 +4,21 @@ int calculateParityBit(unsigned char* hash, int k){
 	int i;
 	unsigned char resp = 0x00;
 	int bit = 0, aux = 0;
-	unsigned char* md = malloc (CC_MD5_DIGEST_LENGTH);
-	CC_MD5(hash, k, md);
-	for(i=0; i<CC_MD5_DIGEST_LENGTH; i++){
+	unsigned char* md = (unsigned char*)malloc(MD5_DIGEST_LENGTH);
+	MD5(hash, k, md);
+	for (i = 0; i< MD5_DIGEST_LENGTH; i++){
 		resp ^= md[i];
 	}
-	for(i = 0; i<8;i++){
+	for (i = 0; i<8; i++){
 		aux = resp & 1;
 		resp = resp >> 1;
 		bit ^= aux;
 	}
+	return bit;
 }
 
 void getBitsTweaked(int numb, unsigned char* bitmapData, unsigned char* alist, int* b, int k){
-	unsigned char* calculateHash = malloc(k);
+	unsigned char *calculateHash = (unsigned char*)malloc(k);
 	int i, new, num;
 
 	for(i=k-1; i >= 0; i--){
@@ -49,7 +50,7 @@ void calculateLinealIndependency(unsigned char *bitmapData[6]){
 	unsigned char* data[5];
 	int i;
 	for(i=0; i<5; i++){
-//		data[i] = calculateBits(bitmapData[i+1], 3);
+/*		data[i] = calculateBits(bitmapData[i+1], 3);*/
 	}
 
 }
