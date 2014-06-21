@@ -38,3 +38,34 @@ int* calculateBArray(int k){
 	b[k-1] += 1;
 	return b;
 }
+
+
+int calculateLinealIndependency(unsigned char *arr1, unsigned char *arr2, unsigned char *arr3){
+	unsigned char *arr[3];
+	arr[0] = arr1;
+	arr[1] = arr2;
+	arr[2] = arr3;
+	int i, sum, res, total = 0;
+	for(i=0; i<3; i++){
+		sum = arr[i][0]*arr[(i+1)%3][1]*arr[(i+2)%3][2];
+		res = arr[i][2]*arr[(i+1)%3][1]*arr[(i+2)%3][0];
+		total += (sum-res);
+	}
+	return total;
+}
+
+void untweakBits(unsigned char *bitmapData, int action, int* b, int pos){
+	int num = (1<<b[pos])*(-1*action);
+	*(bitmapData+pos) +=num;
+}
+
+int tweakBits(unsigned char *bitmapData, pos, int* b){
+	int num = 1<<b[pos];
+	unsigned char aux = *(bitmapData+pos);
+	*(bitmapData+pos) += num;
+	if(*(bitmapData+pos) < aux){
+		*(bitmapData+pos) = aux-num;
+		return -1;
+	}
+	return 1;
+}

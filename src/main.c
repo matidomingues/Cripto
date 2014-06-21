@@ -4,7 +4,6 @@
 #include <dirent.h>
 #include <limits.h>
 #include "fileoperations/fileOp.h"
-#include "bitoperations/bitCalculations.h"
 #include "criptoperations/encript.h"
 
 #define MAX_OPTS 6

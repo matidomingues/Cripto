@@ -46,11 +46,60 @@ void getBitsTweaked(int numb, unsigned char* bitmapData, unsigned char* alist, i
 	*(bitmapData+(k-1)) ^= bit;
 }
 
-void calculateLinealIndependency(unsigned char *bitmapData[6]){
-	unsigned char* data[5];
+void printMemory(unsigned char *data){
 	int i;
-	for(i=0; i<5; i++){
-/*		data[i] = calculateBits(bitmapData[i+1], 3);*/
-	}
 
+	for(i=0; i<3;i++){
+		printf("%2x ",*(data+i));
+	}
+	printf("\n");
 }
+
+int Tweaker(unsigned char ** bitmapData, int k, int loc, int *b){
+	unsigned char *data[k];
+	int i, end = 0, tweak = 0, pos = 0 , lastop = 0, lastpos = 0, lastweak = 0;
+	do{
+		for(i = 0; i < k; i++){
+			data[i] = calculateBits((bitmapData[i]+loc), b, 3);
+		}
+		if(calculateLinealIndependency(data[0], data[1], data[2]) == 0){
+			untweakBits(bitmapData[lastweak]+loc, lastop, b, lastpos);
+			lastweak = tweak;
+			lastpos = pos;
+			lastop = tweakBits(bitmapData[tweak++]+loc, pos, b);
+			if(tweak == 4){
+				pos++;
+				tweak = 0;
+				if(pos == 3){
+					lastop = 0;
+					pos = 0;
+				}
+			}
+		}else{
+			end = 1;
+		}
+		for(i=0; i<k; i++){
+			free(data[i]);
+		}
+	}while(!end);
+}
+
+int independenceNow(unsigned char **bitmapData, int images, int* b, int w){
+
+	return -1;
+}
+
+void encript(unsigned char** bitmapData, int images, int size){
+	int w, i, num;
+	unsigned char* data;
+	int* b = calculateBArray(3);
+	for(w = 0 ; w< size; w += 3){
+		if(independenceNow(bitmapData, images, b, w));
+		for(i=1; i<4; i++){
+			data = calculateBits(bitmapData[i]+w, b, 3);
+			num = calculateB(bitmapData[0]+w, data, 3);
+			getBitsTweaked(num,bitmapData[i]+w, data, b,3);
+		}
+	}
+}
+
