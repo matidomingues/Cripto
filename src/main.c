@@ -7,6 +7,7 @@
 #include "bitoperations/bitCalculations.h"
 #include "criptoperations/encript.h"
 
+#define MAX_OPTS 6
 #define D_OPT_POS 0
 #define D_OPT_SHORT "d"
 #define D_OPT_LONG NULL
@@ -18,6 +19,7 @@
 #define K_OPT_LONG NULL
 #define MIN_K 2
 #define MAX_K 3
+#define N_OPT_FILES_COUNT UINT_MAX
 #define N_OPT_POS 2
 #define N_OPT_SHORT "n"
 #define N_OPT_LONG NULL
@@ -30,7 +32,7 @@
 #define DEFAULT_DIR_OPT "."
 #define END_OPT_POS 5
 
-#define BASE_ALLOC 6
+#define BASE_ALLOC (MAX_K * 2)
 #define REALLOC_COEF 3
 
 #define PATH_SEPARATOR "/"
@@ -46,19 +48,13 @@ typedef unsigned char boolean;
 typedef unsigned char byte;
 
 /* Argument variables */
-arg_lit *command_d, *command_r;
-arg_int *k_d, *k_r;
-arg_file *secret_d, *secret_r;
-arg_int *n_d, *n_r;
-arg_file *dir_d, *dir_r;
-struct arg_end *end_d, *end_r;
-void * argtable_d[] = {command_d, k_d, n_d, secret_d, dir_d, end_d };
-void * argtable_r[] = {command_r, k_r, n_r, secret_r, dir_r, end_r };
+void ** argtable_d;// = {command_d, k_d, n_d, secret_d, dir_d, end_d };
+void ** argtable_r;// = {command_r, k_r, n_r, secret_r, dir_r, end_r };
 
 /* Main variables */
 const char *default_shadow_dir[] = { DEFAULT_DIR_OPT };
 const char *default_shadow_dir_extension[] = { "" };
-unsigned int k, n;
+unsigned int k = 0, n = 0;
 string secret_filename;
 string secret_filepath;
 BITMAPINFOHEADER secret_info_header;
@@ -67,10 +63,6 @@ string shadows_dir;
 unsigned int shadows_qty;
 BITMAPINFOHEADER *shadows_info_headers;
 byte **shadows_bitmap_data;
-
-
-DIR *dir_pt;
-struct dirent *ent;
 
 void printBMPMatrix(unsigned char *bitmapData, BITMAPINFOHEADER infoHeader){
 	unsigned int i,w;
@@ -84,6 +76,7 @@ void printBMPMatrix(unsigned char *bitmapData, BITMAPINFOHEADER infoHeader){
 }
 
 void init_argtable_r() {
+	argtable_r = (void **)malloc(MAX_OPTS * sizeof(void*));
 	argtable_r[R_OPT_POS] = arg_lit1(R_OPT_SHORT, R_OPT_LONG, "Indicates to retrieve the secret in other images");
 	argtable_r[K_OPT_POS] = arg_int1(K_OPT_SHORT, K_OPT_LONG, "<n>", "Minimum shadows' quantity to unveil the secret");
 	argtable_r[N_OPT_POS] = arg_int0(N_OPT_SHORT, N_OPT_LONG, "<n>", "The total shadows' quantity among which the secret was distributed");
@@ -95,6 +88,7 @@ void init_argtable_r() {
 }
 
 void init_argtable_d() {
+	argtable_d = (void **)malloc(MAX_OPTS * sizeof(void*));
 	argtable_d[D_OPT_POS] = arg_lit1(D_OPT_SHORT, D_OPT_LONG, "Indicates to distribute the secret in other images");
 	argtable_d[K_OPT_POS] = arg_int1(K_OPT_SHORT, K_OPT_LONG, "<n>", "Minimum shadows' quantity among which the secret will be distributed");
 	argtable_d[N_OPT_POS] = arg_int0(N_OPT_SHORT, N_OPT_LONG, "<n>", "The total shadows' quantity among which the secret will be distributed");
@@ -105,26 +99,31 @@ void init_argtable_d() {
 	((arg_file *)argtable_d[DIR_OPT_POS])->extension = default_shadow_dir_extension;
 }
 
-void realloc_shadows() {
-	BITMAPINFOHEADER * aux_info_headers = (BITMAPINFOHEADER *)realloc(shadows_info_headers, (shadows_qty + REALLOC_COEF) * sizeof(BITMAPINFOHEADER));
+int realloc_shadows(int max) {
+	BITMAPINFOHEADER * aux_info_headers = (BITMAPINFOHEADER *)realloc(shadows_info_headers, (max += REALLOC_COEF) * sizeof(BITMAPINFOHEADER));
 	if (aux_info_headers != shadows_info_headers) free(shadows_info_headers);
 	shadows_info_headers = aux_info_headers;
 	byte **aux_shadows_data = (byte **)realloc(shadows_bitmap_data, (shadows_qty + REALLOC_COEF) * sizeof(byte**));
 	if (aux_shadows_data != shadows_bitmap_data) free(shadows_bitmap_data);
 	shadows_bitmap_data = aux_shadows_data;
+	return max;
 }
 
 void fetch_shadows() {
+	DIR *dir_pt;
+	struct dirent *ent;
 	//TODO: make this happen!
 	boolean secret_in_folder = false; //(strcmp(secret_filename, shadows_dir) == 0)? true : false;
 
 	shadows_info_headers = (BITMAPINFOHEADER *)malloc(BASE_ALLOC * sizeof(BITMAPINFOHEADER));
+	shadows_bitmap_data = (byte **)malloc(BASE_ALLOC * sizeof(byte));
 	if ((dir_pt = opendir(shadows_dir)) != NULL) {
+		int max_shadows = BASE_ALLOC;
 		shadows_qty = 0;
-		while ((ent = readdir(dir_pt)) != NULL && (n == INT_MAX || shadows_qty < n)) {
+		while ((ent = readdir(dir_pt)) != NULL && (n == N_OPT_FILES_COUNT || shadows_qty < n)) {
 			if (ent->d_type != DT_REG) continue;
-			if (sizeof(shadows_info_headers) == shadows_qty && n == INT_MAX) {
-				realloc_shadows();
+			if (n == N_OPT_FILES_COUNT && max_shadows == shadows_qty) {
+				max_shadows = realloc_shadows(max_shadows);
 			}
 			string shadow_filename = (string)malloc((strlen(shadows_dir) + strlen(ent->d_name) + 1) * sizeof(string));
 			strcpy(shadow_filename, shadows_dir);
@@ -135,6 +134,7 @@ void fetch_shadows() {
 			shadows_qty++;
 		}
 	}
+	closedir(dir_pt);
 }
 
 void free_shadows() {
@@ -164,9 +164,9 @@ void free_files() {
 
 void distribute(void **argtable) {
 	k = *((arg_int *)argtable[K_OPT_POS])->ival;
-	n = (((arg_int *)argtable[N_OPT_POS])->ival == NULL)? INT_MAX: *((arg_int *)argtable[N_OPT_POS])->ival;
+	n = (*((arg_int *)argtable[N_OPT_POS])->ival == 0)? N_OPT_FILES_COUNT : *((arg_int *)argtable[N_OPT_POS])->ival;
 	if (k < MIN_K || k > MAX_K) {
-		printf("Invalid or unsupported minimum number of shadows. k value must between %d and %d.\n", MIN_K, MAX_K);
+		printf("Invalid or unsupported minimum number of shadows. k value must be between %d and %d.\n", MIN_K, MAX_K);
 		return;
 	}
 	if (((arg_int *)argtable[N_OPT_POS])->ival != NULL && n < k) {
@@ -212,7 +212,7 @@ int main(int argc, char *argv[]) {
 	int errors_r = arg_parse(argc, argv, argtable_r);
 
 	if (errors_d == 0) {
-		if (arg_nullcheck(argtable_d) != 0) {
+		if (arg_nullcheck(argtable_d) == 0) {
 			distribute(argtable_d);
 		} else {
 			perror("Not enough memory!\n");
@@ -227,11 +227,11 @@ int main(int argc, char *argv[]) {
 		}
 	} else {
 		//TODO: Ensure to report errors for the most similar syntax.
-		arg_print_errors(stdout, end_d, argv[0]);
+		arg_print_errors(stdout, argtable_d[MAX_OPTS-1], argv[0]);
 	}
 
-	arg_freetable(argtable_r, sizeof(argtable_r)/sizeof(argtable_r[0]));
-	arg_freetable(argtable_d, sizeof(argtable_d)/sizeof(argtable_d[0]));
+	arg_freetable(argtable_r, MAX_OPTS);
+	arg_freetable(argtable_d, MAX_OPTS);
 	return ret_value;
 
 //	BITMAPINFOHEADER infoHeaders[6];
