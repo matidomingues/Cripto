@@ -112,7 +112,7 @@ int sumValue(int* map, int loc, int k, int images){
 
 }
 
-int independenceNow(unsigned char **bitmapData, int images, int* b, int w, int k){
+void independenceNow(unsigned char **bitmapData, int images, int* b, int w, int k){
 	int loc[k], i, end = 0, restart = 0;
 	unsigned char *elems[k];
 	for(i=1; i<=k;i++){
@@ -127,11 +127,8 @@ int independenceNow(unsigned char **bitmapData, int images, int* b, int w, int k
 		}
 	}
 	if(restart){
-		printf("restarting %d\n", w);
 		independenceNow(bitmapData,images,b,w,k);
 	}
-
-	return -1;
 }
 
 void encript(unsigned char** bitmapData, int images, int size, int k){

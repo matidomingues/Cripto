@@ -61,7 +61,7 @@ void untweakBits(unsigned char *bitmapData, int action, int* b, int pos){
 }
 
 unsigned char tweakBits(unsigned char *bitmapData, pos, int* b){
-	int base = rand()%5;
+	int base = rand()%2;
 	int num = base<<b[pos];
 	unsigned char aux = *(bitmapData+pos);
 	*(bitmapData+pos) += num;
