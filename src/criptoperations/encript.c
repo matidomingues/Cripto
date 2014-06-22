@@ -4,9 +4,9 @@ int calculateParityBit(unsigned char* hash, int k){
 	int i;
 	unsigned char resp = 0x00;
 	int bit = 0, aux = 0;
-	unsigned char* md = (unsigned char*)malloc(MD5_DIGEST_LENGTH);
-	MD5(hash, k, md);
-	for (i = 0; i< MD5_DIGEST_LENGTH; i++){
+	unsigned char* md = (unsigned char*)malloc(CC_MD5_DIGEST_LENGTH);
+	CC_MD5(hash, k, md);
+	for (i = 0; i< CC_MD5_DIGEST_LENGTH; i++){
 		resp ^= md[i];
 	}
 	for (i = 0; i<8; i++){
@@ -55,22 +55,26 @@ void printMemory(unsigned char *data){
 	printf("\n");
 }
 
-int Tweaker(unsigned char ** bitmapData, int k, int loc, int *b){
+int tweaker(unsigned char ** bitmapData, int k, int loc, int *b){
 	unsigned char *data[k];
-	int i, end = 0, tweak = 0, pos = 0 , lastop = 0, lastpos = 0, lastweak = 0;
+	unsigned char tweaked = 0;
+	int i, end = 0, tweak = 0, pos = 0 , lastop = 0, lastpos = 0, lastweak = 0, retry = 0;
 	do{
 		for(i = 0; i < k; i++){
 			data[i] = calculateBits((bitmapData[i]+loc), b, 3);
 		}
 		if(calculateLinealIndependency(data[0], data[1], data[2]) == 0){
-			untweakBits(bitmapData[lastweak]+loc, lastop, b, lastpos);
+			retry = 1;
+			if(tweaked != 0){
+				*(bitmapData[lastweak]+loc) = tweaked;
+			}
 			lastweak = tweak;
 			lastpos = pos;
-			lastop = tweakBits(bitmapData[tweak++]+loc, pos, b);
-			if(tweak == 4){
+			tweaked = tweakBits(bitmapData[tweak++]+loc, pos, b);
+			if(tweak == k){
 				pos++;
 				tweak = 0;
-				if(pos == 3){
+				if(pos == k){
 					lastop = 0;
 					pos = 0;
 				}
@@ -82,23 +86,65 @@ int Tweaker(unsigned char ** bitmapData, int k, int loc, int *b){
 			free(data[i]);
 		}
 	}while(!end);
+	return retry;
 }
 
-int independenceNow(unsigned char **bitmapData, int images, int* b, int w){
+int sumValue(int* map, int loc, int k, int images){
+	int size = images-((k-1)-loc);
+	if(loc == 0){
+		if(size == map[loc]){
+			return 0;
+		}else{
+			map[loc] += 1;
+			return map[loc]+1;
+		}
+	}
+	if(map[loc] == size){
+		int val = sumValue(map, loc-1, k, images);
+		if(val == 0){
+			return 0;
+		}
+		map[loc] = val;
+		return val + 1;
+	}
+	map[loc] += 1;
+	return map[loc]+1;
+
+}
+
+int independenceNow(unsigned char **bitmapData, int images, int* b, int w, int k){
+	int loc[k], i, end = 0, restart = 0;
+	unsigned char *elems[k];
+	for(i=1; i<=k;i++){
+		loc[i-1] = i;
+	}
+	while(!end){
+		for(i=0; i<k; i++){
+			elems[i] = bitmapData[loc[i]];
+		}
+		if((restart = tweaker(elems,k,w,b)) || !sumValue(loc,k-1,k,images-1)){
+			end = 1;
+		}
+	}
+	if(restart){
+		printf("restarting %d\n", w);
+		independenceNow(bitmapData,images,b,w,k);
+	}
 
 	return -1;
 }
 
-void encript(unsigned char** bitmapData, int images, int size){
+void encript(unsigned char** bitmapData, int images, int size, int k){
 	int w, i, num;
 	unsigned char* data;
-	int* b = calculateBArray(3);
-	for(w = 0 ; w< size; w += 3){
-		if(independenceNow(bitmapData, images, b, w));
-		for(i=1; i<4; i++){
-			data = calculateBits(bitmapData[i]+w, b, 3);
-			num = calculateB(bitmapData[0]+w, data, 3);
-			getBitsTweaked(num,bitmapData[i]+w, data, b,3);
+	int* b = calculateBArray(k);
+	for(w = 0 ; w< size; w += k){
+		independenceNow(bitmapData, images, b, w, k);
+		for(i=1; i<images; i++){
+			data = calculateBits(bitmapData[i]+w, b, k);
+			num = calculateB(bitmapData[0]+w, data, k);
+			getBitsTweaked(num,bitmapData[i]+w, data, b,k);
+			free(data);
 		}
 	}
 }

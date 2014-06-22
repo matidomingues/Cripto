@@ -55,17 +55,18 @@ int calculateLinealIndependency(unsigned char *arr1, unsigned char *arr2, unsign
 }
 
 void untweakBits(unsigned char *bitmapData, int action, int* b, int pos){
-	int num = (1<<b[pos])*(-1*action);
+	int base = rand()%5;
+	int num = (base<<b[pos])*(-1*action);
 	*(bitmapData+pos) +=num;
 }
 
-int tweakBits(unsigned char *bitmapData, pos, int* b){
-	int num = 1<<b[pos];
+unsigned char tweakBits(unsigned char *bitmapData, pos, int* b){
+	int base = rand()%5;
+	int num = base<<b[pos];
 	unsigned char aux = *(bitmapData+pos);
 	*(bitmapData+pos) += num;
 	if(*(bitmapData+pos) < aux){
 		*(bitmapData+pos) = aux-num;
-		return -1;
 	}
-	return 1;
+	return aux;
 }
