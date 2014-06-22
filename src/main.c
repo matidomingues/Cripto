@@ -7,6 +7,7 @@
 #include "criptoperations/encript.h"
 
 #define MAX_OPTS 6
+#define P 251
 #define D_OPT_POS 0
 #define D_OPT_SHORT "d"
 #define D_OPT_LONG NULL
@@ -62,6 +63,48 @@ string shadows_dir;
 unsigned int shadows_qty;
 BITMAPINFOHEADER *shadows_info_headers;
 byte **shadows_bitmap_data;
+
+unsigned int modular_inverse[P];
+
+unsigned int modinv(unsigned int u, unsigned int v)
+{
+    unsigned int inv, u1, u3, v1, v3, t1, t3, q;
+    int iter;
+    /* Step X1. Initialize */
+    u1 = 1;
+    u3 = u;
+    v1 = 0;
+    v3 = v;
+    /* Remember odd/even iterations */
+    iter = 1;
+    /* Step X2. Loop while v3 != 0 */
+    while (v3 != 0)
+    {
+        /* Step X3. Divide and "Subtract" */
+        q = u3 / v3;
+        t3 = u3 % v3;
+        t1 = u1 + q * v1;
+        /* Swap */
+        u1 = v1; v1 = t1; u3 = v3; v3 = t3;
+        iter = -iter;
+    }
+    /* Make sure u3 = gcd(u,v) == 1 */
+    if (u3 != 1)
+        return 0;   /* Error: No inverse exists */
+    /* Ensure a positive result */
+    if (iter < 0)
+        inv = v - u1;
+    else
+        inv = u1;
+    return inv;
+}
+
+void init_inverses() {
+	unsigned int i = 0;
+	for (i = 0; i < P; i++) {
+		modular_inverse[i] = modinv(i, P);
+	}
+}
 
 void printBMPMatrix(unsigned char *bitmapData, BITMAPINFOHEADER infoHeader){
 	unsigned int i,w;
@@ -146,12 +189,20 @@ void free_shadows() {
 	free(shadows_info_headers);
 }
 
-void init_files(void **argtable) {
+void init_files_d(void **argtable) {
 	secret_filename = realpath(((arg_file *)argtable[SECRET_OPT_POS])->filename[0], NULL);
 	secret_bitmap_data = LoadBitmapFile(secret_filename, &secret_info_header);
 
 	shadows_dir = realpath(((arg_file *)argtable[DIR_OPT_POS])->filename[0], NULL);
 	fetch_shadows();
+}
+
+void init_files_r(void **argtable) {
+	shadows_dir = realpath(((arg_file *)argtable[DIR_OPT_POS])->filename[0], NULL);
+	fetch_shadows();
+
+	secret_filename = realpath(((arg_file *)argtable[SECRET_OPT_POS])->filename[0], NULL);
+	secret_bitmap_data = (byte *)malloc(shadows_info_headers[0].biSizeImage);
 }
 
 void free_files() {
@@ -172,7 +223,7 @@ void distribute(void **argtable) {
 		printf("Invalid value for the maximum number of shadows.\n");
 		return;
 	}
-	init_files(argtable);
+	init_files_d(argtable);
 	if (shadows_qty < k) {
 		printf("Insufficient images in directory.\n");
 	} else {
@@ -199,12 +250,27 @@ void retrieve(void **argtable) {
 		return;
 	}
 	n = k;
-
+	init_files_r(argtable);
+	if (shadows_qty < k) {
+		printf("Insufficient images in directory.\n");
+	} else {
+		byte **data = (byte **)malloc(shadows_qty * k * sizeof(byte **));
+		unsigned int i, num, w;
+		int *b = calculateBArray(k);
+		for (w = 0; w < shadows_info_headers[0].biSizeImage; w += k) {
+			for (i = 0; i < k; i++) {
+				data[i] = calculateBits(shadows_bitmap_data[i] + w, b, k);
+				if (i == k-1) {
+				}
+			}
+		}
+	}
 }
 
-int main(int argc, char *argv[]) {
 
+int main(int argc, char *argv[]) {
 	int ret_value = EXIT_SUCCESS;
+	init_inverses();
 	init_argtable_d();
 	init_argtable_r();
 	int errors_d = arg_parse(argc, argv, argtable_d);
