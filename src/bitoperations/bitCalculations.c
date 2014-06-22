@@ -15,6 +15,17 @@ unsigned char* calculateBits(unsigned char *bitmapData, int* b, int k){
 	return arr;
 }
 
+unsigned int * get_A(byte *bitmap_data, int *b, int k) {
+	byte * arr = calculateBits(bitmap_data, b, k);
+	unsigned int * ret = (unsigned int *)malloc(k);
+	int i = 0;
+	for (i = 0; i < k; i++) {
+		ret[i] = (unsigned int)arr[i];
+	}
+	free(arr);
+	return ret;
+}
+
 int calculateB(unsigned char *bitmapData, unsigned char *calculatedA, int k){
 	int i;
 	long sum = 0;
@@ -26,7 +37,17 @@ int calculateB(unsigned char *bitmapData, unsigned char *calculatedA, int k){
 	return sum % 251;
 }
 
-int* calculateBArray(int k){
+unsigned int * get_B(shadow_bitmap_data, b_coeffs, w, k) {
+	unsigned int * b = (unsigned int*)malloc(k * sizeof(unsigned int*));
+	int i = 0;
+	for (i = 0; i < k; i++) {
+		int pot = (int)pow(2, b_coeffs[i]);
+		b[i] = ((shadow_bitmap_data + w + i) ^ (256-pot));
+	}
+	return b;
+}
+
+int* calculate_b_coeffs(int k){
 	int i, l[k], *b;
 	b = (int *)malloc(k*sizeof(int));
 	l[0] = 8;
@@ -55,17 +76,18 @@ int calculateLinealIndependency(unsigned char *arr1, unsigned char *arr2, unsign
 }
 
 void untweakBits(unsigned char *bitmapData, int action, int* b, int pos){
-	int num = (1<<b[pos])*(-1*action);
+	int base = rand()%5;
+	int num = (base<<b[pos])*(-1*action);
 	*(bitmapData+pos) +=num;
 }
 
-int tweakBits(unsigned char *bitmapData, pos, int* b){
-	int num = 1<<b[pos];
+unsigned char tweakBits(unsigned char *bitmapData, int pos, int* b){
+	int base = rand()%2;
+	int num = base<<b[pos];
 	unsigned char aux = *(bitmapData+pos);
 	*(bitmapData+pos) += num;
 	if(*(bitmapData+pos) < aux){
 		*(bitmapData+pos) = aux-num;
-		return -1;
 	}
-	return 1;
+	return aux;
 }

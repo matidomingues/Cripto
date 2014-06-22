@@ -49,3 +49,27 @@ unsigned char *LoadBitmapFile(char *filename, BITMAPINFOHEADER *bitmapInfoHeader
 	return bitmapImage;
 
 }
+
+void saveBitmapFile(char *filename, unsigned char* image){
+	BITMAPINFOHEADER *bitmapInfoHeader;
+	FILE *filePtr;
+	BITMAPFILEHEADER bitmapFileHeader;
+	filePtr = fopen(filename,"r+wb");
+		if (filePtr == NULL)
+			return;
+	fread(&bitmapFileHeader, sizeof(BITMAPFILEHEADER), 1,filePtr);
+
+	if (bitmapFileHeader.bfType !=0x4D42)
+	{
+		fclose(filePtr);
+		return;
+	}
+
+	fread(bitmapInfoHeader, sizeof(BITMAPINFOHEADER),1,filePtr);
+
+	fseek(filePtr, bitmapFileHeader.bOffBits , SEEK_SET);
+
+	fwrite(image,bitmapInfoHeader->biSizeImage, 1,filePtr);
+
+	fclose(filePtr);
+}

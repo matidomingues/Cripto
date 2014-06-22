@@ -37,5 +37,6 @@ typedef struct tagBITMAPINFOHEADER
 #pragma pack(pop)
 
 unsigned char *LoadBitmapFile(char *filename, BITMAPINFOHEADER *bitmapInfoHeader);
+void saveBitmapFile(char *filename, unsigned char* image);
 
 #endif
