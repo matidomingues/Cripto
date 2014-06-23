@@ -2,6 +2,7 @@
 #define BITCALCULATIONS_H_
 #include <stdlib.h>
 #include <math.h>
+#include "../includes/commons.h"
 
 unsigned char* calculateBits(unsigned char *bitmapData, int* b, int k);
 unsigned int * get_A(byte *bitmap_data, int *b, int k);

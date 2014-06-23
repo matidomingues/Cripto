@@ -37,12 +37,12 @@ int calculateB(unsigned char *bitmapData, unsigned char *calculatedA, int k){
 	return sum % 251;
 }
 
-unsigned int * get_B(shadow_bitmap_data, b_coeffs, w, k) {
+unsigned int * get_B(byte * shadow_bitmap_data, int * b_coeffs, int w, int k) {
 	unsigned int * b = (unsigned int*)malloc(k * sizeof(unsigned int*));
 	int i = 0;
 	for (i = 0; i < k; i++) {
 		int pot = (int)pow(2, b_coeffs[i]);
-		b[i] = ((shadow_bitmap_data + w + i) ^ (256-pot));
+		b[i] = (*(shadow_bitmap_data + w + i) ^ (byte)(256-pot));
 	}
 	return b;
 }

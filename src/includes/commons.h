@@ -8,6 +8,8 @@
 #ifndef COMMONS_H_
 #define COMMONS_H_
 
+#include <argtable2.h>
+
 #define PATH_SEPARATOR "/"
 
 #define true 1

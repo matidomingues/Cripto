@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <dirent.h>
+#include <string.h>
 #include "includes/commons.h"
 #include "fileoperations/fileOp.h"
 #include "criptoperations/encript.h"
@@ -39,16 +40,12 @@ static void ** argtable_r = NULL;// = {command_r, k_r, n_r, secret_r, dir_r, end
 
 /* Main variables */
 static const char *default_shadow_dir[] = { DEFAULT_DIR_OPT };
-static const char *default_shadow_dir_extension[] = { "" };
 static unsigned int k = 0, n = 0;
+static unsigned int shadows_count = 0;
 static string secret_filename = NULL;
-static string secret_filepath = NULL;
-static BITMAPINFOHEADER *secret_info_header = NULL;
-static byte *secret_bitmap_data = NULL;
-static string shadows_dir = NULL;
-static unsigned int shadows_qty = 0;
-static BITMAPINFOHEADER *shadows_info_headers = NULL;
-static byte **shadows_bitmap_data = NULL;
+static string shadows_path = NULL;
+static bitmap * secret = NULL;
+static bitmap ** shadows = NULL;
 
 void printBMPMatrix(unsigned char *bitmapData, BITMAPINFOHEADER infoHeader){
 	int i,w;
@@ -61,26 +58,42 @@ void printBMPMatrix(unsigned char *bitmapData, BITMAPINFOHEADER infoHeader){
 	}
 }
 
+int realloc_shadows(int shadows_qty) {
+	bitmap ** aux = (bitmap**)realloc(shadows, (shadows_qty + REALLOC_COEF) * sizeof(byte**));
+	if (aux == NULL) {
+		perror("Out of memory.\n");
+		exit(EXIT_FAILURE);
+	}
+	shadows = aux;
+	return shadows_qty + REALLOC_COEF;
+}
+
 void fetch_shadows() {
 	DIR * dir_pt;
 	struct dirent *ent;
-	shadows_info_headers = (BITMAPINFOHEADER *)malloc(BASE_ALLOC * sizeof(BITMAPINFOHEADER));
-	shadows_bitmap_data = (byte **)malloc(BASE_ALLOC * sizeof(byte));
-	if ((dir_pt = opendir(shadows_dir)) != NULL) {
+	if ((dir_pt = opendir(shadows_path)) != NULL) {
 		int max_shadows = BASE_ALLOC;
-		shadows_qty = 0;
-		while ((ent = readdir(dir_pt)) != NULL && (n == N_OPT_FILES_COUNT || shadows_qty < n)) {
+		shadows_count = 0;
+		while ((ent = readdir(dir_pt)) != NULL && (n == N_OPT_FILES_COUNT || shadows_count < n)) {
 			if (ent->d_type != DT_REG) continue;
-			if (n == N_OPT_FILES_COUNT && max_shadows == shadows_qty) {
+			if (n == N_OPT_FILES_COUNT && max_shadows == shadows_count) {
 				max_shadows = realloc_shadows(max_shadows);
 			}
-			string shadow_filename = (string)malloc((strlen(shadows_dir) + strlen(ent->d_name) + 1) * sizeof(string));
-			strcpy(shadow_filename, shadows_dir);
+			string shadow_filename = (string)malloc((strlen(shadows_path) + strlen(ent->d_name) + 1) * sizeof(string));
+			strcpy(shadow_filename, shadows_path);
 			strcat(shadow_filename, PATH_SEPARATOR);
 			strcat(shadow_filename, ent->d_name);
-			shadows_bitmap_data[shadows_qty] = LoadBitmapFile(shadow_filename, &shadows_info_headers[shadows_qty]);
+			if (strcmp(shadow_filename, secret_filename) == 0) {
+				free(shadow_filename);
+				continue;
+			}
+			shadows[shadows_count] = load_bitmap_file(shadow_filename);
+			if (shadows[shadows_count] == NULL) {
+				free(shadow_filename);
+				continue;
+			}
 			free(shadow_filename);
-			shadows_qty++;
+			shadows_count++;
 		}
 	}
 	closedir(dir_pt);
@@ -88,56 +101,58 @@ void fetch_shadows() {
 
 void free_shadows() {
 	unsigned int i = 0;
-	for (i = 0; i < shadows_qty; i++) {
-		free(shadows_bitmap_data[i]);
-		free(&shadows_info_headers[i]);
+	for (i = 0; i < shadows_count; i++) {
+		free(shadows[i]->data);
+		free(shadows[i]);
 	}
-	free(shadows_bitmap_data);
-	free(shadows_info_headers);
+	free(shadows);
 }
 
-void init_files_d(void **argtable) {
-	secret_filename = realpath(((arg_file *)argtable[SECRET_OPT_POS])->filename[0], NULL);
-	secret_bitmap_data = LoadBitmapFile(secret_filename, &secret_info_header);
-
-	shadows_dir = realpath(((arg_file *)argtable[DIR_OPT_POS])->filename[0], NULL);
-	fetch_shadows();
-}
+//void init_files_d(void **argtable) {
+//	secret_filename = realpath(((arg_file *)argtable[SECRET_OPT_POS])->filename[0], NULL);
+//	secret_bitmap_data = LoadBitmapFile(secret_filename, &secret_info_header);
+//
+//	shadows_dir = realpath(((arg_file *)argtable[DIR_OPT_POS])->filename[0], NULL);
+//	fetch_shadows();
+//}
 
 void init_files_r(void **argtable) {
-	shadows_dir = realpath(((arg_file *)argtable[DIR_OPT_POS])->filename[0], NULL);
-	fetch_shadows();
-
 	secret_filename = realpath(((arg_file *)argtable[SECRET_OPT_POS])->filename[0], NULL);
-	secret_bitmap_data = (byte *)malloc(shadows_info_headers[0].biSizeImage);
+	string path = (((arg_file *)argtable[DIR_OPT_POS])->count == 0) ? default_shadow_dir[0] :
+			((arg_file *)argtable[DIR_OPT_POS])->filename[0];
+	shadows_path = realpath(path, NULL);
+	fetch_shadows();
+	secret = (bitmap *)malloc(sizeof(bitmap));
+	secret->data = (byte *)malloc(shadows[0]->i_hdr.biSize * sizeof(byte));
 }
 
 void free_files() {
+	free(secret->data);
+	free(secret);
+	free(shadows_path);
 	free(secret_filename);
-	free(secret_bitmap_data);
-	free(shadows_dir);
 	free_shadows();
 }
 
-void distribute(void **argtable) {
-	k = *((arg_int *)argtable[K_OPT_POS])->ival;
-	n = (*((arg_int *)argtable[N_OPT_POS])->ival == 0)? N_OPT_FILES_COUNT : *((arg_int *)argtable[N_OPT_POS])->ival;
-	if (k < MIN_K || k > MAX_K) {
-		printf("Invalid or unsupported minimum number of shadows. k value must be between %d and %d.\n", MIN_K, MAX_K);
-		return;
-	}
-	if (((arg_int *)argtable[N_OPT_POS])->ival != NULL && n < k) {
-		printf("Invalid value for the maximum number of shadows.\n");
-		return;
-	}
-	init_files_d(argtable);
-	if (shadows_qty < k) {
-		printf("Insufficient images in directory.\n");
-	} else {
-		encrypt_images(secret_bitmap_data, shadows_bitmap_data, shadows_qty, secret_info_header->biSizeImage, k);
-	}
-	free_files();
-}
+//void distribute(void **argtable) {
+//	k = *((arg_int *)argtable[K_OPT_POS])->ival;
+//	n = (*((arg_int *)argtable[N_OPT_POS])->ival == 0)? N_OPT_FILES_COUNT : *((arg_int *)argtable[N_OPT_POS])->ival;
+//	if (k < MIN_K || k > MAX_K) {
+//		printf("Invalid or unsupported minimum number of shadows. k value must be between %d and %d.\n", MIN_K, MAX_K);
+//		return;
+//	}
+//	if (((arg_int *)argtable[N_OPT_POS])->ival != NULL && n < k) {
+//		printf("Invalid value for the maximum number of shadows.\n");
+//		return;
+//	}
+//	init_files_d(argtable);
+//	if (shadows_count < k) {
+//		printf("Insufficient images in directory.\n");
+//	} else {
+//		encrypt_images(secret_bitmap_data, shadows_bitmap_data, shadows_count, secret_info_header.biSizeImage, k);
+//	}
+//	free_files();
+//}
 
 void retrieve(void **argtable) {
 	k = *((arg_int *)argtable[K_OPT_POS])->ival;
@@ -147,90 +162,99 @@ void retrieve(void **argtable) {
 	}
 	n = k;
 	init_files_r(argtable);
-	if (shadows_qty < k) {
+	if (shadows_count < k) {
 		printf("Insufficient images in directory.\n");
 	} else {
 		int i = 0;
 		int image_size = 0;
 		for (i = 0; i < k; i++) {
-			if (i == 0) image_size = shadows_info_headers[i].biSizeImage;
-			if (image_size != shadows_info_headers[i].biSizeImage) {
+			if (i == 0) image_size = shadows[i]->i_hdr.biSizeImage;
+			if (image_size != shadows[i]->i_hdr.biSizeImage) {
 				image_size = 0;
 			}
 		}
 		if (image_size == 0) {
 			printf("Images size don't match.\n");
 		} else {
-			decrypt_images(&secret_bitmap_data, shadows_bitmap_data, image_size, k);
-			if (secret_bitmap_data == NULL) {
-				printf("Error in file decryption.\n");
-			} else {
-				saveBitmapFile(secret_filename, secret_bitmap_data);
-			}
+			decrypt_images(secret, shadows, image_size, k);
+			copy_headers(secret, shadows[0]);
+			create_bitmap_file("secret-test1.bmp", secret);
 		}
 	}
 }
 
-//int main(int argc, char *argv[]) {
-//	int ret_value = EXIT_SUCCESS;
-//	init_inverses();
-//	init_argtable_d();
-//	init_argtable_r();
-//	int errors_d = arg_parse(argc, argv, argtable_d);
-//	int errors_r = arg_parse(argc, argv, argtable_r);
-//
-//	if (errors_d == 0) {
-//		if (arg_nullcheck(argtable_d) == 0) {
-//			distribute(argtable_d);
-//		} else {
-//			perror("Not enough memory!\n");
-//			ret_value = EXIT_FAILURE;
-//		}
-//	} else if (errors_r == 0) {
-//		if (arg_nullcheck(argtable_r) == 0) {
-//			retrieve(argtable_r);
-//		} else {
-//			perror("Not enough memory!\n");
-//			ret_value = EXIT_FAILURE;
-//		}
-//	} else {
-//		//TODO: Ensure to report errors for the most similar syntax.
-//		arg_print_errors(stdout, argtable_d[MAX_OPTS-1], argv[0]);
-//	}
-//
-//}
+int main(int argc, char *argv[]) {
+	int ret_value = EXIT_SUCCESS;
+	init_crypto();
+	init_argtable_d();
+	init_argtable_r();
+	int errors_d = arg_parse(argc, argv, argtable_d);
+	int errors_r = arg_parse(argc, argv, argtable_r);
+
+	if (errors_d == 0) {
+		if (arg_nullcheck(argtable_d) == 0) {
+			distribute(argtable_d);
+		} else {
+			perror("Not enough memory!\n");
+			ret_value = EXIT_FAILURE;
+		}
+	} else if (errors_r == 0) {
+		if (arg_nullcheck(argtable_r) == 0) {
+			retrieve(argtable_r);
+		} else {
+			perror("Not enough memory!\n");
+			ret_value = EXIT_FAILURE;
+		}
+	} else {
+		//TODO: Ensure to report errors for the most similar syntax.
+		arg_print_errors(stdout, argtable_d[MAX_OPTS-1], argv[0]);
+	}
+
+}
 
 //int main(void) {
+//	init_crypto();
 //	srand(time(NULL));
 //	BITMAPINFOHEADER infoHeaders[6];
 //	unsigned char *bitmapData[6];
+//	bitmap * secret;
+//	bitmap * shadow_bitmaps[2];
 //	bitmapData[1] = LoadBitmapFile("20x20-1.bmp",&infoHeaders[1]);
 //	bitmapData[2] = LoadBitmapFile("20x20-2.bmp",&infoHeaders[2]);
 //	bitmapData[3] = LoadBitmapFile("20x20-3.bmp",&infoHeaders[3]);
 //	bitmapData[4] = LoadBitmapFile("20x20-4.bmp",&infoHeaders[4]);
 //	bitmapData[5] = LoadBitmapFile("20x20-5.bmp",&infoHeaders[5]);
-//	bitmapData[0] = (byte *)malloc(infoHeaders[1].biSizeImage);
-//
-//	decrypt_images(&bitmapData[0], bitmapData + 1, infoHeaders[1].biSizeImage, 3);
-//	saveBitmapFile("secret-20x20.bmp", secret_bitmap_data);
+//	bitmapData[1] = LoadBitmapFile("cachavachassd.bmp",&infoHeaders[1]);
+//	bitmapData[2] = LoadBitmapFile("neuruspuchossd.bmp",&infoHeaders[2]);
+//	bitmapData[3] = LoadBitmapFile("raimundossd.bmp",&infoHeaders[3]);
+//	bitmapData[4] = LoadBitmapFile("20x20-4.bmp",&infoHeaders[4]);
+//	bitmapData[5] = LoadBitmapFile("20x20-5.bmp",&infoHeaders[5]);
+//	shadow_bitmaps[0] = load_bitmap_file("smartphones156x156ssd.bmp");
+//	shadow_bitmaps[1] = load_bitmap_file("obelisco156x156ssd.bmp");
+//	secret = (bitmap *)malloc(sizeof(bitmap));
+//	secret->data = (byte*)malloc(shadow_bitmaps[0]->i_hdr.biSizeImage * sizeof(byte));
+//	k = 2;
+//	decrypt_images(secret, shadow_bitmaps, shadow_bitmaps[0]->i_hdr.biSizeImage, k);
+//	copy_headers(secret, shadow_bitmaps[0]);
+//	create_bitmap_file("secret-test1.bmp", secret);
 //}
 
-int main(void){
-	srand(time(NULL));
-	BITMAPINFOHEADER infoHeaders[6];
-	unsigned char *bitmapData[6];
-	bitmapData[0] = LoadBitmapFile("20x20.bmp",&infoHeaders[0]);
-	bitmapData[1] = LoadBitmapFile("20x20-1.bmp",&infoHeaders[1]);
-	bitmapData[2] = LoadBitmapFile("20x20-2.bmp",&infoHeaders[2]);
-	bitmapData[3] = LoadBitmapFile("20x20-3.bmp",&infoHeaders[3]);
-	bitmapData[4] = LoadBitmapFile("20x20-4.bmp",&infoHeaders[4]);
-	bitmapData[5] = LoadBitmapFile("20x20-5.bmp",&infoHeaders[5]);
-	printBMPMatrix(bitmapData[1], infoHeaders[1]);
-
-	encript(bitmapData, 6, infoHeaders[0].biSizeImage,3);
-
-	//printBMPMatrix(bitmapData[0], infoHeaders[0]);
-	printf("\n");
-
-	printBMPMatrix(bitmapData[1], infoHeaders[1]);
-}
+//int main(void){
+//	srand(time(NULL));
+//	BITMAPINFOHEADER infoHeaders[6];
+//	unsigned char *bitmapData[6];
+//	bitmapData[0] = LoadBitmapFile("20x20.bmp",&infoHeaders[0]);
+//	bitmapData[1] = LoadBitmapFile("20x20-1.bmp",&infoHeaders[1]);
+//	bitmapData[2] = LoadBitmapFile("20x20-2.bmp",&infoHeaders[2]);
+//	bitmapData[3] = LoadBitmapFile("20x20-3.bmp",&infoHeaders[3]);
+//	bitmapData[4] = LoadBitmapFile("20x20-4.bmp",&infoHeaders[4]);
+//	bitmapData[5] = LoadBitmapFile("20x20-5.bmp",&infoHeaders[5]);
+//	printBMPMatrix(bitmapData[1], infoHeaders[1]);
+//
+//	encrypt_images(bitmapData[0], &bitmapData[1], 5, infoHeaders[0].biSizeImage,3);
+//
+//	//printBMPMatrix(bitmapData[0], infoHeaders[0]);
+//	printf("\n");
+//
+//	printBMPMatrix(bitmapData[1], infoHeaders[1]);
+//}

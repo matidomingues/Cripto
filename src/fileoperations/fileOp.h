@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include "../includes/commons.h"
 
 typedef unsigned int DWORD;
 typedef unsigned short WORD;
@@ -36,7 +37,16 @@ typedef struct tagBITMAPINFOHEADER
 }BITMAPINFOHEADER;
 #pragma pack(pop)
 
-unsigned char *LoadBitmapFile(char *filename, BITMAPINFOHEADER *bitmapInfoHeader);
+typedef struct bitmap {
+	BITMAPFILEHEADER f_hdr;
+	BITMAPINFOHEADER i_hdr;
+	byte * data;
+} bitmap;
+
+byte *LoadBitmapFile(char *filename, BITMAPINFOHEADER *bitmapInfoHeader);
+bitmap * load_bitmap_file(string filename);
 void saveBitmapFile(char *filename, unsigned char* image);
+void create_bitmap_file(string filename, bitmap * bitmap);
+void copy_headers(bitmap *to, bitmap *from);
 
 #endif
