@@ -1,5 +1,14 @@
 #include "encript.h"
 
+void printMemory(unsigned char *data){
+	int i;
+
+	for(i=0; i<3;i++){
+		printf("%2x ",*(data+i));
+	}
+	printf("\n");
+}
+
 int calculateParityBit(unsigned char* hash, int k){
 	int i;
 	unsigned char resp = 0x00;
@@ -14,6 +23,7 @@ int calculateParityBit(unsigned char* hash, int k){
 		resp = resp >> 1;
 		bit ^= aux;
 	}
+	free(md);
 	return bit;
 }
 
@@ -40,19 +50,16 @@ void getBitsTweaked(int numb, unsigned char* bitmapData, unsigned char* alist, i
 
 		*(bitmapData+i) += new;
 		numb = numb >> num;
+		printf("hash ");
+		printMemory(calculateHash);
+		printf("actual ");
+		printMemory(bitmapData);
 	}
+
 	int bit = calculateParityBit(calculateHash, k);
 	bit = bit << (b[k-1]-1);
 	*(bitmapData+(k-1)) ^= bit;
-}
-
-void printMemory(unsigned char *data){
-	int i;
-
-	for(i=0; i<3;i++){
-		printf("%2x ",*(data+i));
-	}
-	printf("\n");
+	free(calculateHash);
 }
 
 int tweaker(unsigned char ** bitmapData, int k, int loc, int *b){
@@ -144,5 +151,6 @@ void encript(unsigned char** bitmapData, int images, int size, int k){
 			free(data);
 		}
 	}
+	free(b);
 }
 
