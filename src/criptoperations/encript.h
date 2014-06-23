@@ -27,6 +27,6 @@
 void getBitsTweaked(int numb, unsigned char* bitmapData, unsigned char* alist, int* b, int k);
 void encrypt_images(byte * secret_bitmap_data, byte ** shadows_bitmap_data, int shadows_qty, int image_size, int k);
 int decrypt_images(bitmap * secret_bitmap, bitmap ** shadows_bitmaps, int image_size, int k);
-void init_crypto();
+void init_crypto(int k);
 
 #endif

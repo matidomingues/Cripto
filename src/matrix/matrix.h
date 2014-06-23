@@ -12,7 +12,7 @@
 
 #define P 251
 
-void init_inverses();
+void init_matrix(int k);
 unsigned int ** make_eye(int k);
 boolean is_eye(unsigned int ** matrix, int k);
 void mult_k(unsigned int * vec, unsigned int k, int size);

@@ -192,6 +192,7 @@ void retrieve(void **argtable) {
 	}
 	n = k;
 	init_files_r(argtable);
+	init_crypto(k);
 	if (shadows_count < k) {
 		printf("Insufficient images in directory.\n");
 	} else {
@@ -228,7 +229,6 @@ void retrieve(void **argtable) {
 
 int main(int argc, char *argv[]) {
 	int ret_value = EXIT_SUCCESS;
-	init_crypto();
 	init_argtable_d();
 	init_argtable_r();
 	int errors_d = arg_parse(argc, argv, argtable_d);

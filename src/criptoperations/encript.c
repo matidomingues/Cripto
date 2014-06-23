@@ -1,7 +1,7 @@
 #include "encript.h"
 
-void init_crypto() {
-	init_inverses();
+void init_crypto(int k) {
+	init_matrix(k);
 }
 
 void decode(byte * bitmap_data, int pos, unsigned int ** A, unsigned int * B, int k) {
