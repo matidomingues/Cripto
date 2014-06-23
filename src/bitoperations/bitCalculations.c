@@ -15,6 +15,17 @@ unsigned char* calculateBits(unsigned char *bitmapData, int* b, int k){
 	return arr;
 }
 
+unsigned int * get_A(byte *bitmap_data, int *b, int k) {
+	byte * arr = calculateBits(bitmap_data, b, k);
+	unsigned int * ret = (unsigned int *)malloc(k);
+	int i = 0;
+	for (i = 0; i < k; i++) {
+		ret[i] = (unsigned int)arr[i];
+	}
+	free(arr);
+	return ret;
+}
+
 int calculateB(unsigned char *bitmapData, unsigned char *calculatedA, int k){
 	int i;
 	long sum = 0;
@@ -26,7 +37,17 @@ int calculateB(unsigned char *bitmapData, unsigned char *calculatedA, int k){
 	return sum % 251;
 }
 
-int* calculateBArray(int k){
+unsigned int * get_B(byte * shadow_bitmap_data, int * b_coeffs, int w, int k) {
+	unsigned int * b = (unsigned int*)malloc(k * sizeof(unsigned int*));
+	int i = 0;
+	for (i = 0; i < k; i++) {
+		int pot = (int)pow(2, b_coeffs[i]);
+		b[i] = (*(shadow_bitmap_data + w + i) ^ (byte)(256-pot));
+	}
+	return b;
+}
+
+int* calculate_b_coeffs(int k){
 	int i, l[k], *b;
 	b = (int *)malloc(k*sizeof(int));
 	l[0] = 8;

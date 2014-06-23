@@ -2,11 +2,31 @@
 #define ENCRIPT_H_
 
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include <time.h>
-#include <CommonCrypto/CommonDigest.h>
+#include "../fileoperations/fileOp.h"
+#include "../includes/commons.h"
 #include "../bitoperations/bitCalculations.h"
+#include "../matrix/matrix.h"
+#ifdef __APPLE__
+	#include <CommonCrypto/CommonDigest.h>
+	#define MY_MD5_DIGEST_LENGTH CC_MD5_DIGEST_LENGTH
+	#define MY_MD5(X, Y, Z) CC_MD5((X), (Y), (Z))
+#else
+	#include <openssl/md5.h>
+	#include <openssl/crypto.h>
+	#define MY_MD5_DIGEST_LENGTH MD5_DIGEST_LENGTH
+	#define MY_MD5(X,Y,Z) MD5((X), (Y), (Z))
+#endif
 
-void encript(unsigned char** bitmapData, int images, int size, int k);
+#define EXIT_OK 0
+#define EXIT_PARITY_CHECK_ERR 1
+#define EXIT_NON_INVERTIBLE_MATRIX 2
+
+void getBitsTweaked(int numb, unsigned char* bitmapData, unsigned char* alist, int* b, int k);
+void encrypt_images(byte * secret_bitmap_data, byte ** shadows_bitmap_data, int shadows_qty, int image_size, int k);
+int decrypt_images(bitmap * secret_bitmap, bitmap ** shadows_bitmaps, int image_size, int k);
+void init_crypto();
 
 #endif

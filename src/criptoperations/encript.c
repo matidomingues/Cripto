@@ -9,16 +9,29 @@ void printMemory(unsigned char *data){
 	printf("\n");
 }
 
-int calculateParityBit(unsigned char* hash, int k){
+void init_crypto() {
+	init_inverses();
+}
+
+void decode(byte * bitmap_data, int pos, unsigned int ** A, unsigned int * B, int k) {
+	unsigned int * X = mult_vec(A, B, k);
+	int i = 0;
+	for (i = 0; i < k; i++) {
+		*(bitmap_data + pos + i) = (byte)X[i];
+	}
+	free(X);
+}
+
+int calculate_parity_bit(byte *hash, int k){
 	int i;
-	unsigned char resp = 0x00;
+	byte resp = 0x00;
 	int bit = 0, aux = 0;
-	unsigned char* md = (unsigned char*)malloc(CC_MD5_DIGEST_LENGTH);
-	CC_MD5(hash, k, md);
-	for (i = 0; i< CC_MD5_DIGEST_LENGTH; i++){
+	byte *md = (byte *)malloc(MY_MD5_DIGEST_LENGTH * sizeof(byte));
+	MY_MD5(hash, k, md);
+	for (i = 0; i< MY_MD5_DIGEST_LENGTH; i++){
 		resp ^= md[i];
 	}
-	for (i = 0; i<8; i++){
+	for (i = 0; i<sizeof(byte); i++){
 		aux = resp & 1;
 		resp = resp >> 1;
 		bit ^= aux;
@@ -27,49 +40,49 @@ int calculateParityBit(unsigned char* hash, int k){
 	return bit;
 }
 
-void getBitsTweaked(int numb, unsigned char* bitmapData, unsigned char* alist, int* b, int k){
-	unsigned char *calculateHash = (unsigned char*)malloc(k);
-	int i, new, num;
+boolean check_parity_bit(byte *shadows_bitmap_data, int * b_coeff, int k) {
+	byte * hashables = (byte*)malloc(k * sizeof(byte));
+	byte mask = 0x01 << (b_coeff[k-1] - 1);
+	int i = 0;
+	for (i = 0; i < k; i++) {
+		hashables[i] = (i == k-1)? shadows_bitmap_data[i] ^ mask : shadows_bitmap_data[i];
+	}
+	byte p = calculate_parity_bit(hashables, k);
+	return p == ((shadows_bitmap_data[k-1] & mask) >> b_coeff[k-1]);
+}
+
+void getBitsTweaked(int numb, byte *bitmapData, byte *alist, int* b_coeffs, int k){
+	byte *calculateHash = (byte *)malloc(k);
+	int i, new, b_size;
 
 	for(i=k-1; i >= 0; i--){
+		b_size = (i == k-1)? b_coeffs[i] -1:
+					b_coeffs[i];
+		bitmapData[i] = alist[i] << b_coeffs[i];
+		new = numb & (1 << b_size) -1;
 
-		if(i==k-1){
-			num = b[i] -1;
-		}else{
-			num = b[i];
-		}
+		calculateHash[i] = (i == k-1)? bitmapData[i] + (new << 1) :
+							bitmapData[i] + new;
 
-		*(bitmapData+i) = *(alist +i) << b[i];
-		new = numb & (1<<num) -1;
-
-		if(i==k-1){
-			*(calculateHash+i) = *(bitmapData+i) + (new<<1);
-		}else{
-			*(calculateHash+i) = *(bitmapData+i) + new;
-		}
-
-		*(bitmapData+i) += new;
-		numb = numb >> num;
-		printf("hash ");
-		printMemory(calculateHash);
-		printf("actual ");
-		printMemory(bitmapData);
+		bitmapData[i] += new;
+		numb = numb >> b_size;
 	}
-
-	int bit = calculateParityBit(calculateHash, k);
-	bit = bit << (b[k-1]-1);
+	int bit = calculate_parity_bit(calculateHash, k);
+	bit = bit << (b_coeffs[k-1]-1);
 	*(bitmapData+(k-1)) ^= bit;
 	free(calculateHash);
 }
 
-int tweaker(unsigned char ** bitmapData, int k, int loc, int *b){
-	unsigned char *data[k];
-	unsigned char tweaked = 0;
+int tweaker(byte ** bitmapData, int k, int loc, int *b){
+	byte **data = (byte **)malloc(k * sizeof(byte*));
+	byte tweaked = 0;
 	int i, end = 0, tweak = 0, pos = 0 , lastop = 0, lastpos = 0, lastweak = 0, retry = 0;
 	do{
 		for(i = 0; i < k; i++){
 			data[i] = calculateBits((bitmapData[i]+loc), b, 3);
+			printMemory(data[i]);
 		}
+		printf("\n");
 		if(calculateLinealIndependency(data[0], data[1], data[2]) == 0){
 			retry = 1;
 			if(tweaked != 0){
@@ -82,6 +95,7 @@ int tweaker(unsigned char ** bitmapData, int k, int loc, int *b){
 				pos++;
 				tweak = 0;
 				if(pos == k){
+					printf("pos max\n");
 					lastop = 0;
 					pos = 0;
 				}
@@ -119,38 +133,74 @@ int sumValue(int* map, int loc, int k, int images){
 
 }
 
-void independenceNow(unsigned char **bitmapData, int images, int* b, int w, int k){
-	int loc[k], i, end = 0, restart = 0;
+void check_independence(byte **shadows_bitmap_data, int images, int* b, int w, int k){
+	int * loc = (int *)malloc(k * sizeof(int));
+	int i, end = 0, restart = 0;
 	unsigned char *elems[k];
+
 	for(i=1; i<=k;i++){
 		loc[i-1] = i;
 	}
+
 	while(!end){
 		for(i=0; i<k; i++){
-			elems[i] = bitmapData[loc[i]];
+			elems[i] = shadows_bitmap_data[loc[i]-1];
 		}
 		if((restart = tweaker(elems,k,w,b)) || !sumValue(loc,k-1,k,images-1)){
 			end = 1;
 		}
 	}
 	if(restart){
-		independenceNow(bitmapData,images,b,w,k);
+		check_independence(shadows_bitmap_data,images,b,w,k);
 	}
 }
 
-void encript(unsigned char** bitmapData, int images, int size, int k){
+void encrypt_images(byte * secret_bitmap_data, byte ** shadows_bitmap_data, int shadows_qty, int image_size, int k){
 	int w, i, num;
 	unsigned char* data;
-	int* b = calculateBArray(k);
-	for(w = 0 ; w< size; w += k){
-		independenceNow(bitmapData, images, b, w, k);
-		for(i=1; i<images; i++){
-			data = calculateBits(bitmapData[i]+w, b, k);
-			num = calculateB(bitmapData[0]+w, data, k);
-			getBitsTweaked(num,bitmapData[i]+w, data, b,k);
+	int* b = calculate_b_coeffs(k);
+	for(w = 0 ; w< image_size; w += k) {
+		check_independence(shadows_bitmap_data, shadows_qty, b, w, k);
+		for(i=0; i<shadows_qty; i++) {
+			data = calculateBits(shadows_bitmap_data[i] + w, b, k);
+			num = calculateB(secret_bitmap_data + w, data, k);
+			getBitsTweaked(num, shadows_bitmap_data[i] + w, data, b,k);
 			free(data);
 		}
 	}
 	free(b);
+}
+
+int decrypt_images(bitmap * secret_bitmap, bitmap ** shadows_bitmaps, int image_size, int k) {
+	unsigned int i, w;
+	int *b_sizes = calculate_b_coeffs(k);
+	for (w = 0; w < image_size; w += k) {
+		unsigned int **A = (unsigned int **)malloc(k * sizeof(unsigned int **));
+		unsigned int **inverse = NULL;
+		unsigned int *B;
+		for (i = 0; i < k; i++) {
+			if (!check_parity_bit(shadows_bitmaps[i]->data + w, b_sizes, k)) {
+				int j = 0;
+				for (j = 0; j < i; j++) free(A[j]);
+				free(A);
+				free(b_sizes);
+				return EXIT_PARITY_CHECK_ERR;
+			}
+			A[i] = get_A(shadows_bitmaps[i]->data + w, b_sizes, k);
+		}
+		inverse = inverse_matrix(A, k);
+		if (inverse == NULL) {
+			free(b_sizes);
+			free_matrix(A, k);
+			return EXIT_NON_INVERTIBLE_MATRIX;
+		}
+		B = get_B(shadows_bitmaps[0]->data, b_sizes, w, k);
+		decode(secret_bitmap->data, w, inverse, B, k);
+		free(B);
+		free_matrix(inverse, k);
+		free_matrix(A, k);
+	}
+	free(b_sizes);
+	return EXIT_OK;
 }
 

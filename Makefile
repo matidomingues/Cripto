@@ -13,7 +13,7 @@ ifeq ($(COMPILER), GCC)
   else
     OBJ = o
   endif
-  COPT = -O2 -Wall
+  COPT = -O0 -Wall
   CCMD = gcc
   OBJFLAG = -o
   EXEFLAG = -o
