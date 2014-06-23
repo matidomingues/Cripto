@@ -26,6 +26,7 @@ int calculate_parity_bit(byte *hash, int k){
 	int i;
 	byte resp = 0x00;
 	int bit = 0, aux = 0;
+	printMemory(hash);
 	byte *md = (byte *)malloc(MY_MD5_DIGEST_LENGTH * sizeof(byte));
 	MY_MD5(hash, k, md);
 	for (i = 0; i< MY_MD5_DIGEST_LENGTH; i++){
@@ -45,7 +46,11 @@ boolean check_parity_bit(byte *shadows_bitmap_data, int * b_coeff, int k) {
 	byte mask = 0x01 << (b_coeff[k-1] - 1);
 	int i = 0;
 	for (i = 0; i < k; i++) {
-		hashables[i] = (i == k-1)? shadows_bitmap_data[i] ^ mask : shadows_bitmap_data[i];
+		if(i == k-1){
+			hashables[i] = (shadows_bitmap_data[i] ^ (256-mask)) + ((shadows_bitmap_data[i]^(mask>>1))<<1);
+		}else{
+			hashables[i] = shadows_bitmap_data[i];
+		}
 	}
 	byte p = calculate_parity_bit(hashables, k);
 	return p == ((shadows_bitmap_data[k-1] & mask) >> b_coeff[k-1]);
@@ -80,9 +85,7 @@ int tweaker(byte ** bitmapData, int k, int loc, int *b){
 	do{
 		for(i = 0; i < k; i++){
 			data[i] = calculateBits((bitmapData[i]+loc), b, 3);
-			printMemory(data[i]);
 		}
-		printf("\n");
 		if(calculateLinealIndependency(data[0], data[1], data[2]) == 0){
 			retry = 1;
 			if(tweaked != 0){
