@@ -5,18 +5,6 @@
 
 unsigned int modular_inverse[P];
 
-static unsigned int available_permutations = 0;
-static unsigned int permutations_left = 0;
-static unsigned int ** permutations = NULL;
-static const unsigned int table[] = {1, 1, 2, 6, 24, 120, 720,
-		5040, 40320, 362880, 3628800, 39916800, 479001600};
-
-unsigned int factorial(unsigned int n) {
-  if (n >= sizeof table /sizeof*table) {
-	  return 0;
-  }
-  return table[n];
-}
 unsigned int ** make_eye(int k) {
 	unsigned int ** eye_mat = (unsigned int **)malloc(k * sizeof(unsigned int *));
 	int i = 0;
@@ -28,7 +16,6 @@ unsigned int ** make_eye(int k) {
 }
 
 boolean is_eye(unsigned int ** matrix, int k) {
-	boolean is_eye = true;
 	int i = 0, j = 0;
 	for (i = 0; i < k ; i++) {
 		for (j = 0; j < k ; j++) {
@@ -93,85 +80,6 @@ unsigned int ** copy_matrix(unsigned int ** matrix, int matrix_size) {
 		}
 	}
 	return aux_matrix;
-}
-
-void create_rows_permutations(int rows) {
-	//indicates sign
-	short sign = 1;
-
-	//Tracks when to change sign.
-	unsigned short change_sign = 0;
-
-	//loop variables
-	short i = 0,j = 0,k = 0;
-
-	//iterations
-	unsigned int loops = factorial(rows);
-
-	//Array of pointers to hold the digits
-	int **index_nos_ptr = (int **)malloc(rows * sizeof(int*));
-
-	//Repetition of each digit (Master copy)
-	int *digit_rep_master = (int *)malloc(rows * sizeof(int));
-
-	//Repetition of each digit (Local copy)
-	int *digit_rep_local = (int *)malloc(rows * sizeof(int));
-
-	//Index for Index_Nos_ptr
-	int *element_num = (int *)malloc(rows * sizeof(int));
-
-
-	//Initialization
-	for(i = 0;i < rows;i++){
-		//Allocate memory to hold the subsequent digits in the form of a LUT
-	            //For N = N, memory required for LUT = N(N+1)/2
-		index_nos_ptr[i] = (int *)malloc(rows-1 * sizeof(int));
-
-		//Initialise the repetition value of each digit (Master and Local)
-		//Each digit repeats for (i-1)!, where 1 is the position of the digit
-		digit_rep_local[i] = digit_rep_master[i] = factorial(rows-i-1);
-
-		//Initialise index values to access the arrays
-		element_num[i] = rows-i-1;
-
-		//Initialise the arrays with the required digits
-		for(j = 0;j < rows-i;j++)
-			*(index_nos_ptr[i] +j) = rows-j-1;
-	}
-
-	while(loops-- > 0){
-		for(i = 0;i < rows;i++){
-			//Decrement the repetition count for each digit
-			if(--digit_rep_local[i] <= 0){
-				//Refill the repitition factor
-				digit_rep_local[i] = digit_rep_master[i];
-
-				//And the index to access the required digit is also 0...
-				if(element_num[i] <= 0 && i != 0){
-					//Reset the index
-					element_num[i] = rows-i-1;
-
-					//Update the numbers held in Index_Nos_ptr[]
-					for(j = 0,k = 0;j <= rows-i;j++){
-						//Exclude the preceeding digit (from the previous array) already printed.
-						if(j != element_num[i-1]){
-							*(index_nos_ptr[i]+k)= *(index_nos_ptr[i-1]+j);
-							k++;
-						}
-					}
-				}else
-					//Decrement the index value so as to print the appropriate digit
-					//in the same array
-					element_num[i]--;
-			}
-		}
-
-		if(!(change_sign-- > 0)){
-			//Update the sign value.
-			sign = -sign;
-			change_sign = 1;
-		}
-	}
 }
 
 unsigned int ** inverse_matrix(unsigned int ** matrix, int matrix_size) {

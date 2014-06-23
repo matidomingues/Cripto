@@ -20,9 +20,13 @@
 	#define MY_MD5(X,Y,Z) MD5((X), (Y), (Z))
 #endif
 
+#define EXIT_OK 0
+#define EXIT_PARITY_CHECK_ERR 1
+#define EXIT_NON_INVERTIBLE_MATRIX 2
+
 void getBitsTweaked(int numb, unsigned char* bitmapData, unsigned char* alist, int* b, int k);
 void encrypt_images(byte * secret_bitmap_data, byte ** shadows_bitmap_data, int shadows_qty, int image_size, int k);
-void decrypt_images(bitmap * secret_bitmap, bitmap ** shadows_bitmaps, int image_size, int k);
+int decrypt_images(bitmap * secret_bitmap, bitmap ** shadows_bitmaps, int image_size, int k);
 void init_crypto();
 
 #endif

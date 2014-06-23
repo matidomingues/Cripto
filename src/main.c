@@ -58,6 +58,29 @@ void printBMPMatrix(unsigned char *bitmapData, BITMAPINFOHEADER infoHeader){
 	}
 }
 
+void init_argtable_r() {
+ 	argtable_r = (void **)malloc(MAX_OPTS * sizeof(void*));
+ 	argtable_r[R_OPT_POS] = arg_lit1(R_OPT_SHORT, R_OPT_LONG, "Indicates to retrieve the secret in other images");
+ 	argtable_r[K_OPT_POS] = arg_int1(K_OPT_SHORT, K_OPT_LONG, "<n>", "Minimum shadows' quantity to unveil the secret");
+ 	argtable_r[N_OPT_POS] = arg_int0(N_OPT_SHORT, N_OPT_LONG, "<n>", "The total shadows' quantity among which the secret was distributed");
+	argtable_r[SECRET_OPT_POS] = arg_file1(SECRET_OPT_SHORT, SECRET_OPT_LONG, "<file>", "Secret's output path");
+ 	argtable_r[DIR_OPT_POS] = arg_file0(DIR_OPT_SHORT, DIR_OPT_LONG, "<dir>", "The directory containing the images where the secret was distributed");
+ 	argtable_r[END_OPT_POS] = arg_end(10);
+ 	((arg_file *)argtable_r[DIR_OPT_POS])->filename = default_shadow_dir;
+ 	((arg_file *)argtable_r[DIR_OPT_POS])->basename = default_shadow_dir;
+}
+
+void init_argtable_d() {
+ 	argtable_d = (void **)malloc(MAX_OPTS * sizeof(void*));
+ 	argtable_d[D_OPT_POS] = arg_lit1(D_OPT_SHORT, D_OPT_LONG, "Indicates to distribute the secret in other images");
+ 	argtable_d[K_OPT_POS] = arg_int1(K_OPT_SHORT, K_OPT_LONG, "<n>", "Minimum shadows' quantity among which the secret will be distributed");
+	argtable_d[N_OPT_POS] = arg_int0(N_OPT_SHORT, N_OPT_LONG, "<n>", "The total shadows' quantity among which the secret will be distributed");
+ 	argtable_d[SECRET_OPT_POS] = arg_file1(SECRET_OPT_SHORT, SECRET_OPT_LONG, "<file>", "Secret's path");
+ 	argtable_d[DIR_OPT_POS] = arg_file0(DIR_OPT_SHORT, DIR_OPT_LONG, "<dir>", "The directory containing the images where the secret was distributed");
+	argtable_d[END_OPT_POS] = arg_end(10);
+	((arg_file *)argtable_d[DIR_OPT_POS])->filename = ((arg_file *)argtable_d[DIR_OPT_POS])->basename = default_shadow_dir;
+}
+
 int realloc_shadows(int shadows_qty) {
 	bitmap ** aux = (bitmap**)realloc(shadows, (shadows_qty + REALLOC_COEF) * sizeof(byte**));
 	if (aux == NULL) {
@@ -74,6 +97,7 @@ void fetch_shadows() {
 	if ((dir_pt = opendir(shadows_path)) != NULL) {
 		int max_shadows = BASE_ALLOC;
 		shadows_count = 0;
+		shadows = (bitmap **)malloc(BASE_ALLOC * sizeof(bitmap **));
 		while ((ent = readdir(dir_pt)) != NULL && (n == N_OPT_FILES_COUNT || shadows_count < n)) {
 			if (ent->d_type != DT_REG) continue;
 			if (n == N_OPT_FILES_COUNT && max_shadows == shadows_count) {
@@ -101,11 +125,13 @@ void fetch_shadows() {
 
 void free_shadows() {
 	unsigned int i = 0;
-	for (i = 0; i < shadows_count; i++) {
-		free(shadows[i]->data);
-		free(shadows[i]);
+	if (shadows != NULL) {
+		for (i = 0; i < shadows_count; i++) {
+			free(shadows[i]->data);
+			free(shadows[i]);
+		}
+		free(shadows);
 	}
-	free(shadows);
 }
 
 //void init_files_d(void **argtable) {
@@ -118,7 +144,10 @@ void free_shadows() {
 
 void init_files_r(void **argtable) {
 	secret_filename = realpath(((arg_file *)argtable[SECRET_OPT_POS])->filename[0], NULL);
-	string path = (((arg_file *)argtable[DIR_OPT_POS])->count == 0) ? default_shadow_dir[0] :
+	if (secret_filename == NULL) {
+		secret_filename = ((arg_file *)argtable[SECRET_OPT_POS])->filename[0];
+	}
+	const string path = (((arg_file *)argtable[DIR_OPT_POS])->count == 0) ? default_shadow_dir[0] :
 			((arg_file *)argtable[DIR_OPT_POS])->filename[0];
 	shadows_path = realpath(path, NULL);
 	fetch_shadows();
@@ -127,10 +156,11 @@ void init_files_r(void **argtable) {
 }
 
 void free_files() {
-	free(secret->data);
-	free(secret);
-	free(shadows_path);
-	free(secret_filename);
+	if (secret != NULL) {
+		free(secret->data);
+		free(secret);
+	}
+	if (shadows_path != NULL) free(shadows_path);
 	free_shadows();
 }
 
@@ -176,11 +206,24 @@ void retrieve(void **argtable) {
 		if (image_size == 0) {
 			printf("Images size don't match.\n");
 		} else {
-			decrypt_images(secret, shadows, image_size, k);
-			copy_headers(secret, shadows[0]);
-			create_bitmap_file("secret-test1.bmp", secret);
+			switch (decrypt_images(secret, shadows, image_size, k)) {
+			case EXIT_OK:
+				copy_headers(secret, shadows[0]);
+				create_bitmap_file(secret_filename, secret);
+				break;
+			case EXIT_NON_INVERTIBLE_MATRIX:
+				printf("An error ocurred while trying to decode.\n");
+				break;
+			case EXIT_PARITY_CHECK_ERR:
+				printf("Parity check failed. File might be corrupted.\n");
+				break;
+			default:
+				printf("An Unknown error ocurred. Abortin.\n");
+				break;
+			}
 		}
 	}
+	free_files();
 }
 
 int main(int argc, char *argv[]) {
@@ -193,7 +236,7 @@ int main(int argc, char *argv[]) {
 
 	if (errors_d == 0) {
 		if (arg_nullcheck(argtable_d) == 0) {
-			distribute(argtable_d);
+//			distribute(argtable_d);
 		} else {
 			perror("Not enough memory!\n");
 			ret_value = EXIT_FAILURE;
@@ -209,7 +252,7 @@ int main(int argc, char *argv[]) {
 		//TODO: Ensure to report errors for the most similar syntax.
 		arg_print_errors(stdout, argtable_d[MAX_OPTS-1], argv[0]);
 	}
-
+	return ret_value;
 }
 
 //int main(void) {

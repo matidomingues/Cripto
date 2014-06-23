@@ -2,6 +2,7 @@
 #define FILEOP_H_
 
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 #include "../includes/commons.h"
 

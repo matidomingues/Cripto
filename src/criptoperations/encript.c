@@ -160,30 +160,28 @@ void encrypt_images(byte * secret_bitmap_data, byte ** shadows_bitmap_data, int 
 	}
 }
 
-void decrypt_images(bitmap * secret_bitmap, bitmap ** shadows_bitmaps, int image_size, int k) {
-	unsigned int i, num, w;
+int decrypt_images(bitmap * secret_bitmap, bitmap ** shadows_bitmaps, int image_size, int k) {
+	unsigned int i, w;
 	int *b_sizes = calculate_b_coeffs(k);
 	for (w = 0; w < image_size; w += k) {
-		unsigned int **A = (byte **)malloc(k * sizeof(unsigned int **));
+		unsigned int **A = (unsigned int **)malloc(k * sizeof(unsigned int **));
 		unsigned int **inverse = NULL;
 		unsigned int *B;
 		for (i = 0; i < k; i++) {
 			if (!check_parity_bit(shadows_bitmaps[i]->data + w, b_sizes, k)) {
-				printf("Parity bit doesn't match. File might be corrupted. Terminating.\n");
 				int j = 0;
-				for (j = 0; j < i; j++) free(A[i]);
+				for (j = 0; j < i; j++) free(A[j]);
 				free(A);
 				free(b_sizes);
-				return;
+				return EXIT_PARITY_CHECK_ERR;
 			}
 			A[i] = get_A(shadows_bitmaps[i]->data + w, b_sizes, k);
 		}
 		inverse = inverse_matrix(A, k);
 		if (inverse == NULL) {
-			printf("Some error happened. Probably matrix wasn't invertible.\n");
 			free(b_sizes);
 			free_matrix(A, k);
-			return;
+			return EXIT_NON_INVERTIBLE_MATRIX;
 		}
 		B = get_B(shadows_bitmaps[0]->data, b_sizes, w, k);
 		decode(secret_bitmap->data, w, inverse, B, k);
@@ -192,5 +190,6 @@ void decrypt_images(bitmap * secret_bitmap, bitmap ** shadows_bitmaps, int image
 		free_matrix(A, k);
 	}
 	free(b_sizes);
+	return EXIT_OK;
 }
 
