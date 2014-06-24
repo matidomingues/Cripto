@@ -160,6 +160,21 @@ void create_bitmap_file(string filename, bitmap * bitmap) {
 }
 
 void copy_headers(bitmap *to, bitmap *from) {
-	memcpy(&(to->f_hdr), &(from->f_hdr), sizeof(BITMAPFILEHEADER));
-	memcpy(&(to->i_hdr), &(from->i_hdr), sizeof(BITMAPINFOHEADER));
+	to->f_hdr.bOffBits = from->f_hdr.bOffBits;
+	to->f_hdr.bfReserved = from->f_hdr.bfReserved;
+	to->f_hdr.bfSize = from->f_hdr.bfSize;
+	to->f_hdr.bfType = from->f_hdr.bfType;
+    to->i_hdr.biSize = from->i_hdr.biSize;
+    to->i_hdr.biWidth = from->i_hdr.biWidth;
+    to->i_hdr.biHeight = from->i_hdr.biHeight;
+    to->i_hdr.biPlanes = from->i_hdr.biPlanes;
+    to->i_hdr.biBitCount = from->i_hdr.biBitCount;
+    to->i_hdr.biCompression = from->i_hdr.biCompression;
+    to->i_hdr.biSizeImage = from->i_hdr.biSizeImage;
+    to->i_hdr.biXPelsPerMeter = from->i_hdr.biXPelsPerMeter;
+    to->i_hdr.biYPelsPerMeter = from->i_hdr.biYPelsPerMeter;
+    to->i_hdr.biClrUsed = from->i_hdr.biClrUsed;
+    to->i_hdr.biClrImportant = from->i_hdr.biClrImportant;
+//	memcpy(&(to->f_hdr), &(from->f_hdr), sizeof(BITMAPFILEHEADER));
+//	memcpy(&(to->i_hdr), &(from->i_hdr), sizeof(BITMAPINFOHEADER));
 }

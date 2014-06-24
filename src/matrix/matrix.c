@@ -1,6 +1,3 @@
-/*
- * matrix.c
- */
 #include "matrix.h"
 
 static unsigned int modular_inverse[P];
@@ -29,7 +26,7 @@ void init_permutations(int N)
 	//Tracks when to change sign.
 	unsigned short change_sign = 0;
 	//loop variables
-	short i = 0,j = 0,k = 0;
+	short i = 0,j = 0,k = 0, p = 0;
 	//iterations
 	long loops = available_permutations = factorial(N);
 	//Array of pointers to hold the digits
@@ -59,10 +56,10 @@ void init_permutations(int N)
 	}
 
 	while(loops-- > 0){
-		permutations[loops - 1] = (int *)malloc(N * sizeof(int));
+		permutations[p] = (int *)malloc(N * sizeof(int));
 		for(i = 0;i < N;i++){
 			//Print from MSD to LSD
-			permutations[loops - 1][i] = *(index_nos_ptr[i] + element_num[i]);
+			permutations[p][i] = *(index_nos_ptr[i] + element_num[i]);
 			//Decrement the repetition count for each digit
 			if(--digit_rep_local[i] <= 0){
 				//Refill the repitition factor
@@ -91,6 +88,7 @@ void init_permutations(int N)
 			sign = -sign;
 			change_sign = 1;
 		}
+		p++;
 	}
 	for (i = 0; i < N; i++) {
 		free(index_nos_ptr[i]);
