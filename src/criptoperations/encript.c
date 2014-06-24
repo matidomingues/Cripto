@@ -183,28 +183,35 @@ int decrypt_images(bitmap * secret_bitmap, bitmap ** shadows_bitmaps, int image_
 		unsigned int **inverse = NULL;
 		unsigned int *B;
 		for (i = 0; i < k; i++) {
-			if (!check_parity_bit(shadows_bitmaps[i]->data + w, b_sizes, k)) {
-				int j = 0;
-				for (j = 0; j < i; j++) free(A[j]);
-				free(A);
-				free(b_sizes);
-				return EXIT_PARITY_CHECK_ERR;
-			}
+			printf("b_sizes: %d %d %d\n", b_sizes[0] , b_sizes[1] , b_sizes[2] );
+//			if (!check_parity_bit(shadows_bitmaps[i]->data + w, b_sizes, k)) {
+//				int j = 0;
+//				for (j = 0; j < i; j++) free(A[j]);
+//				free(A);
+//				free(b_sizes);
+//				return EXIT_PARITY_CHECK_ERR;
+//			}
 			A[i] = get_A(shadows_bitmaps[i]->data + w, b_sizes, k);
 		}
+		printf("A:\n");
+		print_matrix(A, k);
 		inverse = inverse_matrix(A, k);
 		if (inverse == NULL) {
-			free(b_sizes);
-			free_matrix(A, k);
+			//free(b_sizes);
+			//free_matrix(A, k);
 			return EXIT_NON_INVERTIBLE_MATRIX;
 		}
 		B = get_B(shadows_bitmaps[0]->data, b_sizes, w, k);
+		printf("b_sizes2: %d %d %d\n", b_sizes[0] , b_sizes[1] , b_sizes[2] );
+		printf("Inverse:\n");
+		print_matrix(inverse, k);
+		printf("B: [ %d , %d , %d ]\n",B[0],B[1],B[2]);
 		decode(secret_bitmap->data, w, inverse, B, k);
-		free(B);
-		free_matrix(inverse, k);
-		free_matrix(A, k);
+		//free(B);
+		//free_matrix(inverse, k);
+		//free_matrix(A, k);
 	}
-	free(b_sizes);
+	//free(b_sizes);
 	return EXIT_OK;
 }
 

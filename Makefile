@@ -23,8 +23,8 @@ ifeq ($(COMPILER), GCC)
   LIBS = -largtable2 -lm -lcrypto
   LIBPATH = -L/usr/local/lib
 #  LIBPATH = 
-  CPPFLAGS = $(COPT) -g $(INCLUDES)
-  LDFLAGS = $(LIBPATH) -g $(LIBS)
+  CPPFLAGS = $(COPT) -ggdb3 $(INCLUDES)
+  LDFLAGS = $(LIBPATH) -ggdb3 $(LIBS)
   DEP = dep
 else
   OBJ = obj

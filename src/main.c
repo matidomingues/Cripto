@@ -157,7 +157,9 @@ void init_files_r(void **argtable) {
 
 void free_files() {
 	if (secret != NULL) {
-		free(secret->data);
+		if (secret->data != NULL) {
+			free(secret->data);
+		}
 		free(secret);
 	}
 	if (shadows_path != NULL) free(shadows_path);

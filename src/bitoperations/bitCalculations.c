@@ -6,6 +6,7 @@ unsigned char* calculateBits(unsigned char *bitmapData, int* b, int k){
 
 	arr = (unsigned char*)malloc(k);
 
+	printf("%d %d %d\n", b[0] , b[1] , b[2] );
 	for(i = 0; i < k; i++){
 		pot = (int)pow(2,b[i]);
 		arr[i] = (*bitmapData & (256-pot));
@@ -16,6 +17,7 @@ unsigned char* calculateBits(unsigned char *bitmapData, int* b, int k){
 }
 
 unsigned int * get_A(byte *bitmap_data, int *b, int k) {
+	printf("%d %d %d\n", b[0] , b[1] , b[2] );
 	byte * arr = calculateBits(bitmap_data, b, k);
 	unsigned int * ret = (unsigned int *)malloc(k);
 	int i = 0;

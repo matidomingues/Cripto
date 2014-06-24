@@ -22,6 +22,7 @@ void free_matrix(unsigned int ** matrix, int matrix_size);
 unsigned int ** copy_matrix(unsigned int ** matrix, int matrix_size);
 unsigned int ** inverse_matrix(unsigned int ** matrix, int matrix_size);
 void print_matrix(unsigned int ** matrix, int matrix_size);
+void print_vec(unsigned int * vec, int size);
 boolean is_zeroes(unsigned int ** matrix, int matrix_size);
 
 #endif /* MATRIX_H_ */
