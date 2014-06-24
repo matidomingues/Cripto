@@ -4,6 +4,16 @@ void init_crypto(int k) {
 	init_matrix(k);
 }
 
+void printMemory(unsigned char *data){
+	int i;
+
+	for(i=0; i<3;i++){
+		printf("%2x ",*(data+i));
+	}
+	printf("\n");
+}
+
+
 void decode(byte * bitmap_data, int pos, unsigned int ** A, unsigned int * B, int k) {
 	unsigned int * X = mult_vec(A, B, k);
 	int i = 0;
@@ -17,6 +27,7 @@ int calculate_parity_bit(byte *hash, int k){
 	int i;
 	byte resp = 0x00;
 	int bit = 0, aux = 0;
+	printMemory(hash);
 	byte *md = (byte *)malloc(MY_MD5_DIGEST_LENGTH * sizeof(byte));
 	MY_MD5(hash, k, md);
 	for (i = 0; i< MY_MD5_DIGEST_LENGTH; i++){
@@ -27,6 +38,7 @@ int calculate_parity_bit(byte *hash, int k){
 		resp = resp >> 1;
 		bit ^= aux;
 	}
+	free(md);
 	return bit;
 }
 
@@ -35,7 +47,11 @@ boolean check_parity_bit(byte *shadows_bitmap_data, int * b_coeff, int k) {
 	byte mask = 0x01 << (b_coeff[k-1] - 1);
 	int i = 0;
 	for (i = 0; i < k; i++) {
-		hashables[i] = (i == k-1)? shadows_bitmap_data[i] ^ mask : shadows_bitmap_data[i];
+		if(i == k-1){
+			hashables[i] = (shadows_bitmap_data[i] ^ (256-mask)) + ((shadows_bitmap_data[i]^(mask>>1))<<1);
+		}else{
+			hashables[i] = shadows_bitmap_data[i];
+		}
 	}
 	byte p = calculate_parity_bit(hashables, k);
 	return p == ((shadows_bitmap_data[k-1] & mask) >> b_coeff[k-1]);
@@ -60,15 +76,7 @@ void getBitsTweaked(int numb, byte *bitmapData, byte *alist, int* b_coeffs, int 
 	int bit = calculate_parity_bit(calculateHash, k);
 	bit = bit << (b_coeffs[k-1]-1);
 	*(bitmapData+(k-1)) ^= bit;
-}
-
-void printMemory(unsigned char *data){
-	int i;
-
-	for(i=0; i<3;i++){
-		printf("%2x ",*(data+i));
-	}
-	printf("\n");
+	free(calculateHash);
 }
 
 int tweaker(byte ** bitmapData, int k, int loc, int *b){
@@ -91,6 +99,7 @@ int tweaker(byte ** bitmapData, int k, int loc, int *b){
 				pos++;
 				tweak = 0;
 				if(pos == k){
+					printf("pos max\n");
 					lastop = 0;
 					pos = 0;
 				}
@@ -132,9 +141,14 @@ void check_independence(byte **shadows_bitmap_data, int images, int* b, int w, i
 	int * loc = (int *)malloc(k * sizeof(int));
 	int i, end = 0, restart = 0;
 	unsigned char *elems[k];
+
+	for(i=1; i<=k;i++){
+		loc[i-1] = i;
+	}
+
 	while(!end){
 		for(i=0; i<k; i++){
-			elems[i] = shadows_bitmap_data[loc[i]];
+			elems[i] = shadows_bitmap_data[loc[i]-1];
 		}
 		if((restart = tweaker(elems,k,w,b)) || !sumValue(loc,k-1,k,images-1)){
 			end = 1;
@@ -158,6 +172,7 @@ void encrypt_images(byte * secret_bitmap_data, byte ** shadows_bitmap_data, int 
 			free(data);
 		}
 	}
+	free(b);
 }
 
 int decrypt_images(bitmap * secret_bitmap, bitmap ** shadows_bitmaps, int image_size, int k) {
