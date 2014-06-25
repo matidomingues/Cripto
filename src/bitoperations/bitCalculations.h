@@ -6,7 +6,7 @@
 
 unsigned char* calculateBits(unsigned char *bitmapData, int* b, int k);
 unsigned int * get_A(byte *bitmap_data, int *b, int k);
-unsigned int * get_B(byte * shadow_bitmap_data, int * b_coeffs, int w, int k);
+unsigned int get_B(byte * shadow_bitmap_data, int * b_coeffs, int k);
 int calculateB(unsigned char *bitmapData, unsigned char *calculatedA, int k);
 int* calculate_b_coeffs(int k);
 int calculateLinealIndependency(unsigned char *arr1, unsigned char *arr2, unsigned char *arr3);

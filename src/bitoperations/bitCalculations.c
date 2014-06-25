@@ -6,7 +6,6 @@ unsigned char* calculateBits(unsigned char *bitmapData, int* b, int k){
 
 	arr = (unsigned char*)malloc(k);
 
-	printf("%d %d %d\n", b[0] , b[1] , b[2] );
 	for(i = 0; i < k; i++){
 		pot = (int)pow(2,b[i]);
 		arr[i] = (*bitmapData & (256-pot));
@@ -17,7 +16,6 @@ unsigned char* calculateBits(unsigned char *bitmapData, int* b, int k){
 }
 
 unsigned int * get_A(byte *bitmap_data, int *b, int k) {
-	printf("%d %d %d\n", b[0] , b[1] , b[2] );
 	byte * arr = calculateBits(bitmap_data, b, k);
 	unsigned int * ret = (unsigned int *)malloc(k);
 	int i = 0;
@@ -39,12 +37,15 @@ int calculateB(unsigned char *bitmapData, unsigned char *calculatedA, int k){
 	return sum % 251;
 }
 
-unsigned int * get_B(byte * shadow_bitmap_data, int * b_coeffs, int w, int k) {
-	unsigned int * b = (unsigned int*)malloc(k * sizeof(unsigned int*));
+unsigned int get_B(byte * shadow_bitmap_data, int * b_coeffs, int k) {
+	byte shift = sizeof(byte) * 8;
+	unsigned int b = 0;
 	int i = 0;
 	for (i = 0; i < k; i++) {
-		int pot = (int)pow(2, b_coeffs[i]);
-		b[i] = (*(shadow_bitmap_data + w + i) ^ (byte)(256-pot));
+		int b_off = (i == k-1)? b_coeffs[i]-1 : b_coeffs[i];
+		shift -= b_off;
+		byte mask = ((byte)pow(2, b_off))-1;
+		b ^= ((shadow_bitmap_data[i] & mask) << shift);
 	}
 	return b;
 }
