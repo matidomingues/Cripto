@@ -38,11 +38,13 @@ typedef struct tagBITMAPINFOHEADER
 }BITMAPINFOHEADER;
 #pragma pack(pop)
 
+#pragma pack(push, 1)
 typedef struct bitmap {
 	BITMAPFILEHEADER f_hdr;
 	BITMAPINFOHEADER i_hdr;
 	byte * data;
 } bitmap;
+#pragma pack(pop)
 
 byte *LoadBitmapFile(char *filename, BITMAPINFOHEADER *bitmapInfoHeader);
 bitmap * load_bitmap_file(string filename);

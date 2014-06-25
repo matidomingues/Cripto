@@ -64,6 +64,7 @@ bitmap * load_bitmap_file(string filename) {
 		//verify that this is a bmp file by check bitmap id
 		if (bm->f_hdr.bfType !=0x4D42)
 		{
+			free(bm);
 			fclose(fp);
 			return NULL;
 		}
@@ -83,7 +84,7 @@ bitmap * load_bitmap_file(string filename) {
 		//verify memory allocation
 		if (!bm->data)
 		{
-			free(bm->data);
+			free(bm);
 			fclose(fp);
 			return NULL;
 		}
@@ -144,15 +145,16 @@ void create_bitmap_file(string filename, bitmap * bitmap) {
 		fclose(fp);
 		return;
 	}
-	while (ftell(fp) < bitmap->f_hdr.bOffBits) {
-		if (fwrite("\0", sizeof(byte), 1, fp) < 1) {
-			printf("Error while writing padding. Terminating.\n");
-			fclose(fp);
-			return;
-		}
+
+	int i = 0, c = 0;
+	while((c = fputc(0, fp)) != EOF && i++ < bitmap->f_hdr.bOffBits);
+	if (c == EOF) {
+		printf("Error while writing padding.\n");
+		fclose(fp);
+		return;
 	}
-	if (fwrite(bitmap->data, bitmap->i_hdr.biSize, 1, fp) < 1) {
-		printf("Error while writing data");
+	if (fwrite(bitmap->data, bitmap->i_hdr.biSizeImage, 1, fp) != 1) {
+		printf("Error while writing data\n");
 		fclose(fp);
 		return;
 	}

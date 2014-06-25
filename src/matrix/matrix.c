@@ -165,7 +165,7 @@ unsigned int * mult_vec(unsigned int ** matrix, unsigned int * vec, int size) {
 	int i = 0, j = 0;
 	for (i = 0; i < size; i++) {
 		for (j = 0; j < size; j++) {
-			result[i] += matrix[i][j] * vec[j];
+			result[i] += (matrix[i][j] * vec[j]);
 			result[i] %= P;
 		}
 	}
@@ -288,6 +288,14 @@ void print_matrix(unsigned int ** matrix, int size) {
 	}
 }
 
+void print_vec(unsigned int * vec, int size) {
+	int i =0;
+	printf("[");
+	for (i = 0; i < size; i++) {
+		printf("%d ", vec[i]);
+	}
+	printf("]\n");
+}
 void init_inverses() {
 	unsigned int i = 0;
 	for (i = 0; i < P; i++) {
